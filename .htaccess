@@ -1,0 +1,7 @@
+Options -Indexes
+Deny from all
+
+<FilesMatch "(rest_service.php)$">
+Order Deny,Allow
+   Allow from all
+</FilesMatch>
