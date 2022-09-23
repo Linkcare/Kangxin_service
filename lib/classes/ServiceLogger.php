@@ -5,6 +5,7 @@ class ServiceLogger {
     const LEVEL_TRACE = 'trace';
     const LEVEL_WARNING = 'warning';
     const LEVEL_ERROR = 'error';
+    const LEVEL_NONE = 'none';
 
     /** @var ServiceLogger */
     private static $instance;
@@ -168,8 +169,10 @@ class ServiceLogger {
             case self::LEVEL_WARNING :
                 return 3;
             case self::LEVEL_ERROR :
-            default :
                 return 4;
+            case self::LEVEL_NONE :
+            default :
+                return 1000;
         }
     }
 

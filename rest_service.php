@@ -1,5 +1,8 @@
 <?php
 error_reporting(E_ERROR); // Do not report warnings to avoid undesired characters in output stream
+const SERVICE_STATUS_IDLE = 'idle';
+const SERVICE_STATUS_SUCCESS = 'success';
+const SERVICE_STATUS_ERROR = 'error';
 
 // Link the config params
 require_once ("lib/default_conf.php");
@@ -9,11 +12,15 @@ setSystemTimeZone();
 error_reporting(0);
 
 if ($_SERVER['REQUEST_METHOD'] != 'POST') {
-    header('Content-type: application/json');
-    $action = $_POST['do'];
-} else {
-    $action = $_GET['do'];
+    return;
 }
+
+// Response is always returned as JSON
+header('Content-type: application/json');
+
+$action = $_GET['function'];
+$responseStatus = SERVICE_STATUS_IDLE;
+$responseMessage = '';
 
 $logger = ServiceLogger::init($GLOBALS['LOG_LEVEL'], $GLOBALS['LOG_DIR']);
 try {
@@ -27,22 +34,44 @@ try {
             $res = $service->importPatients();
             $errorMessages = $res['errors'];
 
+            $success = $res['success'];
+            $failed = $res['failed'];
+            $responseMessage = 'Patient import result: Success: ' . $success . ', Failed: ' . $failed;
+            if ($success + $failed == 0) {
+                $responseStatus = SERVICE_STATUS_IDLE;
+            } elseif ($failed > 0) {
+                $responseStatus = SERVICE_STATUS_ERROR;
+            } else {
+                $responseStatus = SERVICE_STATUS_SUCCESS;
+            }
+
             $logger->trace('Successfully imported: ' . $res['success']);
             $logger->trace('Failed: ' . $res['failed']);
             if (!empty($errorMessages)) {
+                $responseStatus = SERVICE_STATUS_ERROR;
                 $logger->error('IMPORT FINISHED WITH ERRORS', 1);
                 foreach ($errorMessages as $msg) {
                     $logger->error($msg, 2);
                 }
             }
-
+            break;
+        default :
+            $responseStatus = SERVICE_STATUS_ERROR;
+            $responseMessage = 'function "' . $action . '" not implemented';
             break;
     }
 } catch (APIException $e) {
-    $logger->error($e->getMessage());
+    $responseStatus = SERVICE_STATUS_ERROR;
+    $responseMessage = $e->getMessage();
+    $logger->error($responseMessage);
 } catch (Exception $e) {
-    $logger->error($e->getMessage());
+    $responseStatus = SERVICE_STATUS_ERROR;
+    $responseMessage = $e->getMessage();
+    $logger->error($responseMessage);
 }
 
-echo "";
+$serviceResponse = new stdClass();
+$serviceResponse->status = $responseStatus;
+$serviceResponse->message = $responseMessage;
+echo json_encode($serviceResponse);
 

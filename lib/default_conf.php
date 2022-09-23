@@ -8,7 +8,7 @@ session_start();
  */
 $GLOBALS['LANG'] = 'EN';
 $GLOBALS['DEFAULT_TIMEZONE'] = 'Asia/Shanghai';
-/* Log level. Possible values: debug,trace,warning,error */
+/* Log level. Possible values: debug,trace,warning,error,none */
 $GLOBALS['LOG_LEVEL'] = 'error';
 /* Directory to store logs in disk. If null, logs will only be generated on stdout */
 $GLOBALS['LOG_DIR'] = null;

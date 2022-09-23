@@ -1,7 +1,12 @@
 Options -Indexes
 Deny from all
 
-<FilesMatch "(rest_service.php)$">
+<FilesMatch "(rest_service\.php|rest_service)$">
 Order Deny,Allow
    Allow from all
 </FilesMatch>
+
+<IfModule mod_rewrite.c>
+RewriteEngine on
+RewriteRule ^rest_service/(.*)$ rest_service.php?function=$1&%{QUERY_STRING} [QSA]
+</IfModule>
