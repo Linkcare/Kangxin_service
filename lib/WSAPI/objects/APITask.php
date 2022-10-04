@@ -195,6 +195,9 @@ class APITask {
      * @return APIForm[]
      */
     public function getForms() {
+        if ($this->forms === null) {
+            $this->forms = $this->api->task_activity_list($this->id);
+        }
         return $this->forms;
     }
 
@@ -263,22 +266,38 @@ class APITask {
     }
 
     /**
-     * Searches the FORM with the $formId indicated
+     * Searches the FORM with the $formId (can be a FORM CODE) indicated
+     * Returns an array of FORMS that match the requested $formId
      *
      * @param int $formId
-     * @return APIForm
+     * @return APIForm[]
      */
     public function findForm($formId) {
+        $forms = [];
         if ($this->forms === null) {
             $this->forms = $this->api->task_activity_list($this->id);
         }
         foreach ($this->forms as $f) {
             if ($f->getId() == $formId || $f->getFormCode() == $formId) {
-                return $f;
+                $forms[] = $f;
             }
         }
 
-        return null;
+        return $forms;
+    }
+
+    /**
+     * Inserts an ACTIVITY in this TASK
+     *
+     * @param string $taskCode
+     * @param int|string $position
+     * @param boolean $insertClosed
+     * @param stdClass $parameters
+     * @throws APIException
+     * @return APIForm[]|APIReport[]
+     */
+    public function activityInsert($taskCode, $position = null, $insertClosed = false, $parameters = null) {
+        return $this->api->task_activity_insert($this->id, $taskCode, $position, $insertClosed, $parameters);
     }
 
     /**

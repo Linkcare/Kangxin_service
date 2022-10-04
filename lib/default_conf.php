@@ -48,6 +48,8 @@ if (file_exists(__DIR__ . '/../conf/configuration.php')) {
 require_once 'classes/ServiceLogger.php';
 require_once 'classes/ErrorCodes.php';
 require_once 'classes/ServiceException.php';
+require_once 'classes/KangxinItemCodes.php';
+require_once 'classes/KangxinProcedure.php';
 require_once 'classes/KangxinPatientInfo.php';
 require_once 'classes/KangxinAPI.php';
 require_once 'utils.php';

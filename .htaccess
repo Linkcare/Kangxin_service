@@ -1,7 +1,7 @@
 Options -Indexes
 Deny from all
 
-<FilesMatch "(rest_service\.php|rest_service)$">
+<FilesMatch "(rest_service\.php|rest_service|debug_rest.php)$">
 Order Deny,Allow
    Allow from all
 </FilesMatch>

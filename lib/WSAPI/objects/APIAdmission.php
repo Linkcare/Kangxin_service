@@ -212,6 +212,16 @@ class APIAdmission {
      */
     /**
      *
+     * @param string $taskCode
+     * @return APITask
+     */
+    public function insertTask($taskCode) {
+        $taskId = $this->api->task_insert_by_task_code($this->id, $taskCode);
+        return $this->api->task_get($taskId);
+    }
+
+    /**
+     *
      * @param int $maxRes
      * @param int $offset
      * @param TaskFilter $filter

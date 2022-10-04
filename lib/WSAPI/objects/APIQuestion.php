@@ -28,6 +28,15 @@ class APIQuestion {
     const TYPE_MULTIMEDIA = 'MULTIMEDIA';
     const TYPE_GEOLOCATION = 'GEOLOCATION';
     const TYPE_CASE_DATA = 'CASE_DATA';
+    const TYPE_COUNTDOWN = 'COUNTDOWN';
+    const TYPE_QR = 'QR';
+    const TYPE_EVALUATION = 'EVALUATION';
+    const TYPE_TRAINER = 'TRAINER';
+    const TYPE_PHONE = 'PHONE';
+    const TYPE_EMAIL = 'EMAIL';
+    const TYPE_ASSOCIATE = 'ASSOCIATE';
+    const TYPE_ARRAY = 'ARRAY';
+    const TYPE_SIGNATURE = 'SIGNATURE';
     const OPTIONS_TYPES = [self::TYPE_BOOLEAN, self::TYPE_SELECT, self::TYPE_HORIZONTAL_CHECK, self::TYPE_VERTICAL_CHECK, self::TYPE_VERTICAL_RADIO,
             self::TYPE_HORIZONTAL_RADIO];
 
@@ -38,6 +47,7 @@ class APIQuestion {
     private $name;
     private $unit;
     private $order;
+    private $arrayRef;
     private $row;
     private $column;
     private $decimals;
@@ -66,11 +76,12 @@ class APIQuestion {
         $question->itemCode = NullableString($xmlNode->item_code);
         $question->questionTemplateId = NullableString($xmlNode->question_template_id);
 
-        $question->order = intval((string) $xmlNode->order);
-        $question->row = NullableInt((string) $xmlNode->row);
-        $question->column = NullableInt((string) $xmlNode->column);
-        $question->decimals = NullableInt((string) $xmlNode->num_dec);
-        $question->mandatory = textToBool((string) $xmlNode->mandatory);
+        $question->order = intval($xmlNode->order);
+        $question->arrayRef = NullableString($xmlNode->array_ref);
+        $question->row = NullableInt($xmlNode->row);
+        $question->column = NullableInt($xmlNode->column);
+        $question->decimals = NullableInt($xmlNode->num_dec);
+        $question->mandatory = textToBool($xmlNode->mandatory);
         $question->description = NullableString($xmlNode->description);
         $question->descriptionOnEdit = NullableString($xmlNode->description_onedit);
         $question->constraint = NullableString($xmlNode->constraint);
@@ -164,10 +175,7 @@ class APIQuestion {
      * @return int
      */
     public function getArrayRef() {
-        if ($this->getRow()) {
-            return $this->order;
-        }
-        return null;
+        return $this->arrayRef;
     }
 
     /**
@@ -287,7 +295,7 @@ class APIQuestion {
      * @param string $value
      */
     public function setArrayRef($value) {
-        $this->order = $value;
+        $this->arrayRef = $value;
     }
 
     /**

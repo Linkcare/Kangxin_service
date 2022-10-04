@@ -96,7 +96,7 @@ class LinkcareSoapAPI {
         }
 
         $date = currentDate($timezone);
-        $result = $client->session_init($user, $password, null, null, null, '2.7.25', $reuseExistingSession ? 1 : 0, $date);
+        $result = $client->session_init($user, $password, null, null, null, '2.7.26', $reuseExistingSession ? 1 : 0, $date);
         if ($result["ErrorCode"]) {
             throw new APIException($result["ErrorCode"], $result["ErrorMsg"]);
         } else {
@@ -353,7 +353,7 @@ class LinkcareSoapAPI {
      *
      * @param int $taskId
      * @throws APIException
-     * @return APIForm[]
+     * @return APIForm[]|APIReport[]
      */
     public function task_activity_list($taskId) {
         $activities = [];
@@ -364,12 +364,44 @@ class LinkcareSoapAPI {
                 foreach ($results->activity as $activityNode) {
                     if ($activityNode->type == 'form') {
                         $activities[] = APIForm::parseXML($activityNode);
-                    } else {}
+                    } elseif ($activityNode->type == 'report') {
+                        $activities[] = APIReport::parseXML($activityNode);
+                    }
                 }
             }
         }
 
         return array_filter($activities);
+    }
+
+    /**
+     * Inserts an ACTIVITY in an existing TASK
+     *
+     * @param int $taskId
+     * @param string $taskCode
+     * @param int|string $position
+     * @param boolean $insertClosed
+     * @param stdClass $parameters
+     * @throws APIException
+     * @return APIForm[]|APIReport[]
+     */
+    public function task_activity_insert($taskId, $taskCode, $position = null, $insertClosed = false, $parameters = null) {
+        $paramsStr = $parameters ? json_encode($parameters) : null;
+        $params = ['task' => $taskId, 'task_code' => $taskCode, 'position' => $position, 'insert_closed' => boolToText($insertClosed),
+                'parameters' => $paramsStr];
+        $resp = $this->invoke('task_activity_insert', $params);
+        if (!$resp->getErrorCode()) {
+            if ($results = simplexml_load_string($resp->getResult())) {
+                foreach ($results->activity as $activityNode) {
+                    if ($activityNode->type == 'form') {
+                        $activities[] = APIForm::parseXML($activityNode);
+                    } elseif ($activityNode->type == 'report') {
+                        $activities[] = APIReport::parseXML($activityNode);
+                    }
+                }
+            }
+        }
+        return $activities;
     }
 
     /**
@@ -603,8 +635,8 @@ class LinkcareSoapAPI {
         $simpleQuestions = [];
         $arrayQuestions = [];
         foreach ($questions as $q) {
-            if ($q->getRow()) {
-                $arrayQuestions[$q->getOrder()][$q->getRow()][] = $q;
+            if ($q->getArrayRef()) {
+                $arrayQuestions[$q->getArrayRef()][$q->getRow()][] = $q;
             } else {
                 $simpleQuestions[] = $q;
             }

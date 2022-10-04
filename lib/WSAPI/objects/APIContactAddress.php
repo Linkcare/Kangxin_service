@@ -96,6 +96,55 @@ class APIContactAddress {
      * SETTERS
      * **********************************
      */
+
+    /**
+     *
+     * @return string
+     */
+    public function setKind($value) {
+        $this->kind = $value;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function setAddress($value) {
+        $this->address = $value;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function setCity($value) {
+        $this->city = $value;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function setPostcode($value) {
+        $this->postcode = $value;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function setCountry($value) {
+        $this->country = $value;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function setCountryId($value) {
+        $this->countryId = $value;
+    }
+
     /*
      * **********************************
      * METHODS
@@ -118,8 +167,8 @@ class APIContactAddress {
         if ($this->getAddress() !== null) {
             $xml->createChildNode($parentNode, "address", $this->getAddress());
         }
-        if ($this->getAddress() !== null) {
-            $xml->createChildNode($parentNode, "address", $this->getAddress());
+        if ($this->getCity() !== null) {
+            $xml->createChildNode($parentNode, "city", $this->getAddress());
         }
         if ($this->getCountry() !== null) {
             $xml->createChildNode($parentNode, "country", $this->getCountry());

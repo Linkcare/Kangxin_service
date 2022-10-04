@@ -23,6 +23,10 @@ class KangxinAPI {
      * @return KangxinPatientInfo[]
      */
     public function requestPatientList($pageSize, $pageNum) {
+        if ($GLOBALS['SIMULATE_KANGXIN_API']) {
+            return $this->simulatedData();
+        }
+
         $params['pageSize'] = $pageSize;
         $params['pageNum'] = $pageNum;
         $resp = $this->invokeAPI('sickInfo/personInfos', $params);
@@ -132,5 +136,105 @@ class KangxinAPI {
         }
 
         return $result->result;
+    }
+
+    /**
+     * Returns simulated patient information
+     *
+     * @return KangxinPatientInfo[]
+     */
+    private function simulatedData() {
+        $sample1 = '{
+      "sickId": "19680312",
+      "sickNum": "SickNum 1",
+      "name": "PCI Test patient",
+      "sex": "女",
+      "birthDate": "1968-03-12",
+      "age": 54,
+      "currentAddress": "Camino del Discharge 99",
+      "nation": "中国",
+      "identityNumber": "510212194412094125",
+      "phone": "13594125051",
+      "contactName": "Associate name 1",
+      "contactPhone": "Associate phone 1",
+      "relation": "Associate relation 1",
+      "sickNum": "0000198",
+      "residenceNo": "0000198005",
+      "nthHospital": 1,
+      "actualHospitalDays": 25,
+      "admissionTime": "2022-09-25 01:37:48",
+      "admissionDepartment": "Adm. Department",
+      "admissionWard": "Adm. Ward",
+      "hospitalAdmission": "Hospital admission number",
+      "operationLevel": "1,2,3,4",
+      "operationType": "T1,T2,T3,T4",
+      "operationSurgeon": "Surgeon1,Surgeon2,Surgeon3,Surgeon4",
+      "operationCode": "Code1,Code 2,Code 3,Code 4",
+      "operationName": "OpName1,OpName2,OpName3,OpName4",
+      "operationDate": "2022-09-26,2022-09-27,2022-09-28,2022-09-29",
+      "operationName1": "p1_n1,p2_n1",
+      "operationName2": "p1_n2,p2_n2",
+      "operationName3": ",p2_n3,p3_n3",
+      "operationName4": ",,p3_n4,p4_n4",
+      "drugAllergy": "Penicilin",
+      "doctor": "Doctor name",
+      "responsibleNurse": "Mary Responsible",
+      "dischargeTime": "2022-09-30 23:52:36",
+      "dischargeDepartment": "Disch Dept",
+      "dischargeWard": "Disch Ward",
+      "dischargeDiseaseCode": "Disch Disease Code",
+      "dischargeMainDiagnosis": "Disch Main Diag",
+      "otherDiseaseCodes": "Other disease codes",
+      "dischargeOtherDiagnoses": "Disch other diag",
+      "dischargeSituation": "Disch Situation",
+      "dischargeInstructions": "Disch Instructions",
+      "Hospitalized": "Hosp. Info",
+      "note": "Notes of the episode"
+    }';
+        $sample2 = '{
+      "sickId": "19680312",
+      "sickNum": "SickNum 1",
+      "name": "PCI Test patient",
+      "sex": "女",
+      "birthDate": "1968-03-12",
+      "age": 54,
+      "currentAddress": "Camino del Discharge 99",
+      "nation": "中国",
+      "identityNumber": "510212194412094125",
+      "phone": "13594125051",
+      "contactName": "Associate name 1",
+      "contactPhone": "Associate phone 1",
+      "relation": "Associate relation 1",
+      "sickNum": "0000198",
+      "residenceNo": "0000198006",
+      "nthHospital": 2,
+      "actualHospitalDays": 3,
+      "admissionTime": "2022-10-01 01:37:48",
+      "admissionDepartment": "Adm. Department",
+      "admissionWard": "Adm. Ward",
+      "hospitalAdmission": "Hospital admission number",
+      "operationLevel": "99",
+      "operationType": "T1",
+      "operationSurgeon": "Cirujano A",
+      "operationCode": "APC001",
+      "operationName": "Apendicitis",
+      "operationDate": "2022-10-02",
+      "operationName2": "Extracción del apéndice",
+      "drugAllergy": "Penicilin",
+      "doctor": "El que opera las apendicitis",
+      "responsibleNurse": "Jenny Responsible",
+      "dischargeTime": "2022-10-03 23:52:36",
+      "dischargeDepartment": "Disch Dept",
+      "dischargeWard": "Disch Ward",
+      "dischargeDiseaseCode": "Disch Disease Code",
+      "dischargeMainDiagnosis": "Disch Main Diag",
+      "otherDiseaseCodes": "Other disease codes",
+      "dischargeOtherDiagnoses": "Disch other diag",
+      "dischargeSituation": "Disch Situation",
+      "dischargeInstructions": "Disch Instructions",
+      "Hospitalized": "Hosp. Info",
+      "note": "Se recupera sin problemas"
+    }';
+        return [KangxinPatientInfo::fromJson(json_decode($sample1)), KangxinPatientInfo::fromJson(json_decode($sample2))];
     }
 }

@@ -27,7 +27,7 @@ class APIForm {
             return null;
         }
         $form = new APIForm();
-        $form->id = (string) $xmlNode->ref;
+        $form->id = NullableString($xmlNode->ref);
         if ($xmlNode->code) {
             $form->formCode = NullableString((string) $xmlNode->code);
         } else {
@@ -38,14 +38,14 @@ class APIForm {
         $formInfoNode = $xmlNode->data ? $xmlNode->data : $xmlNode;
         if ($formInfoNode->short_name) {
             // form_get() returns the name in node "short_name")
-            $form->name = NullableString((string) $formInfoNode->short_name);
+            $form->name = NullableString($formInfoNode->short_name);
         } else {
-            $form->name = NullableString((string) $formInfoNode->name);
+            $form->name = NullableString($formInfoNode->name);
         }
-        $form->description = NullableString((string) $formInfoNode->description);
-        $form->parentId = NullableInt((string) $formInfoNode->parent_id);
-        $form->date = NullableString((string) $formInfoNode->date);
-        $form->status = NullableString((string) $formInfoNode->status);
+        $form->description = NullableString($formInfoNode->description);
+        $form->parentId = NullableInt($formInfoNode->parent_id);
+        $form->date = NullableString($formInfoNode->date);
+        $form->status = NullableString($formInfoNode->status);
 
         $questions = [];
         if ($formInfoNode->questions) {
