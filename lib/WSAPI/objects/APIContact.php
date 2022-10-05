@@ -11,6 +11,8 @@ class APIContact {
     private $bdate;
     private $age;
     private $gender;
+    private $nationCode;
+    private $nation;
     /* @var APIIdentifier[] $identifiers */
     private $identifiers = [];
     /* @var APIContactAddress[] $addresses */
@@ -39,6 +41,10 @@ class APIContact {
             $contact->bdate = NullableString($xmlNode->data->bdate);
             $contact->age = NullableString($xmlNode->data->age);
             $contact->gender = NullableString($xmlNode->data->gender);
+            if ($xmlNode->data->nationality) {
+                $contact->nationCode = NullableString($xmlNode->data->nationality->ref);
+                $contact->nation = NullableString($xmlNode->data->nationality->name);
+            }
         }
         $contact->fullName = NullableString($xmlNode->full_name);
         if ($xmlNode->name) {
@@ -181,6 +187,22 @@ class APIContact {
 
     /**
      *
+     * @return string
+     */
+    public function getNationCode() {
+        return $this->nationCode;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getNation() {
+        return $this->nation;
+    }
+
+    /**
+     *
      * @return APIIdentifier[]
      */
     public function getIdentifiers() {
@@ -299,6 +321,14 @@ class APIContact {
         $this->gender = $value;
     }
 
+    /**
+     *
+     * @param string $value
+     */
+    public function setNationCode($value) {
+        $this->nationCode = $value;
+    }
+
     /*
      * **********************************
      * METHODS
@@ -379,6 +409,9 @@ class APIContact {
         }
         if ($this->getGender() !== null) {
             $xml->createChildNode($dataNode, "gender", $this->getGender());
+        }
+        if ($this->getNationCode() !== null) {
+            $xml->createChildNode($dataNode, "nationality_ref", $this->getNationCode());
         }
 
         if ($this->getName() !== null || $this->getFamilyName() != null || $this->getCompleteName() !== null) {

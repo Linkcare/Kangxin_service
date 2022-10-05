@@ -178,6 +178,17 @@ class KangxinPatientInfo {
     }
 
     /**
+     *
+     * @return string
+     */
+    public function getNationCode() {
+        if ($this->nation == '中国') {
+            return 'CN';
+        }
+        return null;
+    }
+
+    /**
      * National ID
      *
      * @return string

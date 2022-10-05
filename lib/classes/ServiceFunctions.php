@@ -148,6 +148,10 @@ class ServiceFunctions {
             $contactInfo->setBirthdate($importInfo->getBirthDate());
         }
 
+        if ($importInfo->getNationCode()) {
+            $contactInfo->setNationCode($importInfo->getNationCode());
+        }
+
         if ($importInfo->getPhone()) {
             $phone = new APIContactChannel();
             $phone->setValue($importInfo->getPhone());
