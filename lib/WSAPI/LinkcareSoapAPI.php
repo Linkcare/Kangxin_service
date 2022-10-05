@@ -387,7 +387,7 @@ class LinkcareSoapAPI {
      */
     public function task_activity_insert($taskId, $taskCode, $position = null, $insertClosed = false, $parameters = null) {
         $paramsStr = $parameters ? json_encode($parameters) : null;
-        $params = ['task' => $taskId, 'task_code' => $taskCode, 'position' => $position, 'insert_closed' => boolToText($insertClosed),
+        $params = ['task' => $taskId, 'task_code' => $taskCode, 'position' => $position, 'insert_closed' => textToBool($insertClosed) ? 1 : 0,
                 'parameters' => $paramsStr];
         $resp = $this->invoke('task_activity_insert', $params);
         if (!$resp->getErrorCode()) {

@@ -22,7 +22,7 @@ $GLOBALS['SERVICE_PASSWORD'] = 'password';
 $GLOBALS['SERVICE_TEAM'] = 'LINKCARE';
 
 /* Endpoint URL of the Kangxin API */
-$GLOBALS['KANGXIN_API_URL'] = 'http://183.230.182.185:6050/dmp/phm';
+$GLOBALS['KANGXIN_API_URL'] = 'http://kangxin_api';
 
 /* Number of patients that should be requested to Kangxin and imported in one iteration of the import process */
 $GLOBALS['PATIENT_BATCH_SIZE'] = 1;

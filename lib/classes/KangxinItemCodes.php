@@ -31,6 +31,7 @@ class KangxinItemCodes {
     const DISCHARGE_SITUATION = 'DISCHARGE_SITUATION';
     const DISCHARGE_INSTRUCTIONS = 'DISCHARGE_INSTRUCT';
     const NOTES = 'NOTES';
+    const SOURCE = 'SOURCE';
 
     // Procedure ITEM CODES
     const PROCEDURE_ARRAY = 'PROCEDURE_ARRAY';

@@ -219,15 +219,15 @@ class ServiceLogger {
             file_put_contents($this->logDir . $date . '.log', $logMsg . "\n", FILE_APPEND);
         }
 
+        $lineBreak = "\n";
         if ($this->asHTML) {
-            $logMsg = htmlentities($logMsg) . '<br>';
+            $lineBreak = '<br>';
+            $logMsg = htmlentities($logMsg);
             $logMsg = str_replace(' ', '&nbsp;', $logMsg);
-        } else {
-            $logMsg .= "\n";
         }
 
         if ($this->toSTDOUT) {
-            echo ($logMsg);
+            echo ($logMsg . $lineBreak);
         } else {
             error_log($logMsg);
         }

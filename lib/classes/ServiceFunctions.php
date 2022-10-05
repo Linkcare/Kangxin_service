@@ -186,6 +186,38 @@ class ServiceFunctions {
     private function createAdmission($caseId, $importInfo, $subscription) {
         $setupParameters = new stdClass();
 
+        $setupParameters->{KangxinItemCodes::SICK_ID} = $importInfo->getSickId();
+        $setupParameters->{KangxinItemCodes::SICK_NUM} = $importInfo->getSickNum();
+        $setupParameters->{KangxinItemCodes::RESIDENCE_NO} = $importInfo->getResidenceNo();
+        $setupParameters->{KangxinItemCodes::AGE} = $importInfo->getAge();
+        $setupParameters->{KangxinItemCodes::CURRENT_ADDRESS} = $importInfo->getCurrentAddress();
+        $setupParameters->{KangxinItemCodes::IDENTITY_NUMBER} = $importInfo->getIdentityNumber();
+        $setupParameters->{KangxinItemCodes::PHONE} = $importInfo->getPhone();
+        $setupParameters->{KangxinItemCodes::CONTACT_NAME} = $importInfo->getContactName();
+        $setupParameters->{KangxinItemCodes::RELATION} = $importInfo->getRelation();
+        $setupParameters->{KangxinItemCodes::CONTACT_PHONE} = $importInfo->getContactPhone();
+        $setupParameters->{KangxinItemCodes::ADMISSION_TIME} = $importInfo->getAdmissionTime();
+        $setupParameters->{KangxinItemCodes::ADMISSION_DEPARTMENT} = $importInfo->getAdmissionDepartment();
+        $setupParameters->{KangxinItemCodes::ADMISSION_WARD} = $importInfo->getAdmissionWard();
+        $setupParameters->{KangxinItemCodes::HOSPITAL_ADMISSION} = $importInfo->getHospitalAdmission();
+        $setupParameters->{KangxinItemCodes::DISCHARGE_TIME} = $importInfo->getDischargeTime();
+        $setupParameters->{KangxinItemCodes::DISCHARGE_DEPARTMENT} = $importInfo->getDischargeDepartment();
+        $setupParameters->{KangxinItemCodes::DISCHARGE_WARD} = $importInfo->getDischargeWard();
+        $setupParameters->{KangxinItemCodes::ACTUAL_HOSPITAL_DAYS} = $importInfo->getActualHospitalDays();
+        $setupParameters->{KangxinItemCodes::DISCHARGE_DISEASE_CODE} = $importInfo->getDischargeDiseaseCode();
+        $setupParameters->{KangxinItemCodes::DISCHARGE_MAIN_DIAGNOSIS} = $importInfo->getDischargeMainDiagnosis();
+        $setupParameters->{KangxinItemCodes::OTHER_DISEASE_CODES} = $importInfo->getOtherDiseaseCodes();
+        $setupParameters->{KangxinItemCodes::DISCHARGE_OTHER_DIAGNOSES} = $importInfo->getDischargeOtherDiagnoses();
+        $setupParameters->{KangxinItemCodes::DRUG_ALLERGY} = $importInfo->getDrugAllergy();
+        $setupParameters->{KangxinItemCodes::DOCTOR} = $importInfo->getDoctor();
+        $setupParameters->{KangxinItemCodes::RESPONSIBLE_NURSE} = $importInfo->getResponsibleNurse();
+        $setupParameters->{KangxinItemCodes::HNTH_HOSPITAL} = $importInfo->getNthHospital();
+        $setupParameters->{KangxinItemCodes::HOSPITALIZED} = $importInfo->getHospitalized();
+        $setupParameters->{KangxinItemCodes::DISCHARGE_SITUATION} = $importInfo->getDischargeSituation();
+        $setupParameters->{KangxinItemCodes::DISCHARGE_INSTRUCTIONS} = $importInfo->getDischargeInstructions();
+        $setupParameters->{KangxinItemCodes::NOTES} = $importInfo->getNote();
+        $setupParameters->{KangxinItemCodes::SOURCE} = 2;
+
         return $this->apiLK->admission_create($caseId, $subscription->getId(), null, null, true, $setupParameters);
     }
 
@@ -370,6 +402,10 @@ class ServiceFunctions {
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::NOTES)) {
             $q->setValue($importInfo->getNote());
+            $arrQuestions[] = $q;
+        }
+        if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::SOURCE)) {
+            $q->setValue(2);
             $arrQuestions[] = $q;
         }
 
