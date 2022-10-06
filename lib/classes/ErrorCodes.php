@@ -12,4 +12,7 @@ class ErrorCodes {
 
     /** @var string The API function returned an error message */
     const API_FUNCTION_ERROR = 'API_FUNCTION_ERROR';
+
+    /** @var string Generic error */
+    const UNEXPECTED_ERROR = 'UNEXPECTED_ERROR';
 }

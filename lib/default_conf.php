@@ -24,8 +24,13 @@ $GLOBALS['SERVICE_TEAM'] = 'LINKCARE';
 /* Endpoint URL of the Kangxin API */
 $GLOBALS['KANGXIN_API_URL'] = 'http://kangxin_api';
 
-/* Number of patients that should be requested to Kangxin and imported in one iteration of the import process */
-$GLOBALS['PATIENT_BATCH_SIZE'] = 1;
+/*
+ * Maximum number of patients that should be imported to the Linkcare platform in one execution. 0 means no limit (continue while there are records to
+ * process)
+ */
+$GLOBALS['PATIENT_MAX'] = 0;
+/* Number of patients that will be requested to the Kangxin API in each request */
+$GLOBALS['PATIENT_PAGE_SIZE'] = 50;
 
 /* Program and Team codes of the Subscription where the admissions of the patients will be created */
 $GLOBALS['PROGRAM_CODE'] = 'xxxxx';

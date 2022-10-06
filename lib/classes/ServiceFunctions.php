@@ -33,18 +33,8 @@ class ServiceFunctions {
      *
      * @return string[]
      */
-    function importPatients() {
-        $patientsToImport = $this->apiKangxin->requestPatientList($GLOBALS['PATIENT_BATCH_SIZE'], 1);
-
-        ServiceLogger::getInstance()->debug(
-                'Patients requested to Kangxin: ' . $GLOBALS['PATIENT_BATCH_SIZE'] . ', received: ' . count($patientsToImport));
-
+    public function importPatients() {
         $errorMessages = [];
-
-        if (empty($patientsToImport)) {
-            return ['success' => 0, 'failed' => 0, 'errors' => $errorMessages];
-        }
-
         try {
             $subscription = $this->apiLK->subscription_get($GLOBALS['PROGRAM_CODE'], $GLOBALS['TEAM_CODE']);
         } catch (Exception $e) {
@@ -53,51 +43,86 @@ class ServiceFunctions {
             return ['success' => 0, 'failed' => 0, 'errors' => $errorMessages];
         }
 
+        $maxRecords = $GLOBALS['PATIENT_MAX'];
+        $page = 1;
+        $pageSize = $GLOBALS['PATIENT_PAGE_SIZE'];
+        $processed = 0;
         $importFailed = [];
         $success = [];
-        foreach ($patientsToImport as $ix => $importInfo) {
+        while ($processed < $maxRecords) {
+            $patientsToImport = $this->apiKangxin->requestPatientList($pageSize, $page++);
             ServiceLogger::getInstance()->debug(
-                    'Importing patient ' . sprintf('%03d', $ix) . ': ' . $importInfo->getName() . ' (SickId: ' . $importInfo->getSickId() .
-                    ', Id. card: ' . $importInfo->getIdentityNumber() . ', Episode: ' . $importInfo->getResidenceNo() . ')', 1);
-            $errMsg = '';
-
-            // Create or update the Patient in Linkcare platform
-            try {
-                $patientId = $this->createPatient($importInfo, $subscription);
-            } catch (ServiceException $se) {
-                $errMsg = 'Import service generated an exception: ' . $se->getMessage();
-            } catch (APIException $ae) {
-                $errMsg = 'Linkcare API returned an exception: ' . $ae->getMessage();
-            } catch (Exception $e) {
-                $errMsg = 'Unexpected exception: ' . $e->getMessage();
+                    'Patients requested to Kangxin: ' . $GLOBALS['PATIENT_BATCH_SIZE'] . ', received: ' . count($patientsToImport));
+            if (count($patientsToImport) < $pageSize) {
+                // We have reached the last page, because we received less records than the requested
+                $maxRecords = $processed;
             }
-            if ($errMsg) {
-                $errorMessages[] = 'ERROR CREATING PATIENT ' . $importInfo->getName() . '(' . $importInfo->getIdentityNumber() . '): ' . $errMsg;
-                $importFailed[] = $importInfo;
-                continue;
-            }
-
-            // Create a new Admission for the patient or find the existing one
-            try {
-                $admission = $this->createAdmission($patientId, $importInfo, $subscription);
-                $this->updateEpisodeData($admission, $importInfo);
-            } catch (ServiceException $se) {
-                $errMsg = 'Import service generated an exception: ' . $se->getMessage();
-            } catch (APIException $ae) {
-                $errMsg = 'Linkcare API returned an exception: ' . $ae->getMessage();
-            } catch (Exception $e) {
-                $errMsg = 'Unexpected exception: ' . $e->getMessage();
-            }
-            if ($errMsg) {
-                $errorMessages[] = 'ERROR CREATING ADMISSION FOR PATIENT ' . $importInfo->getName() . '(' . $importInfo->getIdentityNumber() . '): ' .
-                        $errMsg;
-                $importFailed[] = $importInfo;
-            } else {
-                $success[] = $importInfo;
+            foreach ($patientsToImport as $patientInfo) {
+                ServiceLogger::getInstance()->debug(
+                        'Importing patient ' . sprintf('%03d', $processed) . ': ' . $patientInfo->getName() . ' (SickId: ' . $patientInfo->getSickId() .
+                        ', Id. card: ' . $patientInfo->getIdentityNumber() . ', Episode: ' . $patientInfo->getResidenceNo() . ')', 1);
+                try {
+                    $this->processRecord($patientInfo, $subscription);
+                    $success[] = $patientInfo;
+                } catch (Exception $e) {
+                    $importFailed[] = $patientInfo;
+                    $errorMessages[] = $e->getMessage();
+                }
+                $processed++;
+                if ($processed >= $maxRecords) {
+                    break;
+                }
             }
         }
 
         return ['success' => count($success), 'failed' => count($importFailed), 'errors' => $errorMessages];
+    }
+
+    /**
+     * Imports or updates a patient fecthed from Kangxin into the Linkcare Platform
+     *
+     * @param KangxinPatientInfo $kangxinRecord
+     */
+    private function processRecord($kangxinRecord, $subscription) {
+        $errMsg = '';
+        $errCode = null;
+
+        // Create or update the Patient in Linkcare platform
+        try {
+            $patientId = $this->createPatient($kangxinRecord, $subscription);
+        } catch (ServiceException $se) {
+            $errMsg = 'Import service generated an exception: ' . $se->getMessage();
+            $errCode = $se->getCode();
+        } catch (APIException $ae) {
+            $errMsg = 'Linkcare API returned an exception: ' . $ae->getMessage();
+            $errCode = $ae->getCode();
+        } catch (Exception $e) {
+            $errMsg = 'Unexpected exception: ' . $e->getMessage();
+            $errCode = ErrorCodes::UNEXPECTED_ERROR;
+        }
+        if ($errMsg) {
+            $errMsg = 'ERROR CREATING PATIENT ' . $kangxinRecord->getName() . '(' . $kangxinRecord->getIdentityNumber() . '): ' . $errMsg;
+            throw new ServiceException($errCode, $errMsg);
+        }
+
+        // Create a new Admission for the patient or find the existing one
+        try {
+            $admission = $this->createAdmission($patientId, $kangxinRecord, $subscription);
+            $this->updateEpisodeData($admission, $kangxinRecord);
+        } catch (ServiceException $se) {
+            $errMsg = 'Import service generated an exception: ' . $se->getMessage();
+            $errCode = $se->getCode();
+        } catch (APIException $ae) {
+            $errMsg = 'Linkcare API returned an exception: ' . $ae->getMessage();
+            $errCode = $ae->getCode();
+        } catch (Exception $e) {
+            $errMsg = 'Unexpected exception: ' . $e->getMessage();
+            $errCode = ErrorCodes::UNEXPECTED_ERROR;
+        }
+        if ($errMsg) {
+            $errMsg = 'ERROR CREATING ADMISSION FOR PATIENT ' . $kangxinRecord->getName() . '(' . $kangxinRecord->getIdentityNumber() . '): ' . $errMsg;
+            throw new ServiceException($errCode, $errMsg);
+        }
     }
 
     /**
