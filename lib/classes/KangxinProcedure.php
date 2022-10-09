@@ -2,6 +2,10 @@
 
 class KangxinProcedure {
     /** @var string*/
+    private $order;
+    /** @var string*/
+    private $orderDate;
+    /** @var string*/
     private $operationCode;
     /** @var string*/
     private $operationName;
@@ -25,6 +29,22 @@ class KangxinProcedure {
     /**
      * ******* GETTERS *******
      */
+
+    /**
+     *
+     * @return string
+     */
+    public function getOrder() {
+        return $this->order;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getOrderDate() {
+        return $this->orderDate;
+    }
 
     /**
      *
@@ -109,6 +129,22 @@ class KangxinProcedure {
     /**
      * ******* SETTERS *******
      */
+
+    /**
+     *
+     * @param string $value
+     */
+    public function setOrder($value) {
+        $this->order = $value;
+    }
+
+    /**
+     *
+     * @param string $value
+     */
+    public function setOrderDate($value) {
+        $this->orderDate = $value;
+    }
 
     /**
      *

@@ -213,11 +213,19 @@ class APIAdmission {
     /**
      *
      * @param string $taskCode
+     * @param string $date
      * @return APITask
      */
-    public function insertTask($taskCode) {
+    public function insertTask($taskCode, $date = null) {
         $taskId = $this->api->task_insert_by_task_code($this->id, $taskCode);
-        return $this->api->task_get($taskId);
+        $task = $this->api->task_get($taskId);
+
+        if ($date) {
+            $task->setDate($date);
+            $task->save();
+        }
+
+        return $task;
     }
 
     /**
@@ -250,5 +258,22 @@ class APIAdmission {
         }
         $filter->setObjectType('EVENTS');
         return $this->api->admission_get_task_list($this->id, $maxRes, $offset, $filter, $ascending);
+    }
+
+    /**
+     *
+     * @param string $type
+     * @param string $date
+     */
+    public function discharge($type = null, $date = null) {
+        $this->api->admission_discharge($this->id, $type, $date);
+    }
+
+    /**
+     *
+     * @param string $date
+     */
+    public function resume($date = null) {
+        $this->api->admission_resume($this->id, $date);
     }
 }

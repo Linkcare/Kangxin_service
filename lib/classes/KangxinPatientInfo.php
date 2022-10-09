@@ -1,6 +1,9 @@
 <?php
 
 class KangxinPatientInfo {
+    /** @var stdClass */
+    private $originalObject;
+
     /** @var string*/
     private $sickId;
     /** @var string*/
@@ -54,6 +57,10 @@ class KangxinPatientInfo {
     /** @var string*/
     private $operationCode;
     /** @var string*/
+    private $order;
+    /** @var string*/
+    private $orderDate;
+    /** @var string*/
     private $operationName;
     /** @var string*/
     private $operationName1;
@@ -76,6 +83,8 @@ class KangxinPatientInfo {
     /** @var string*/
     private $doctor;
     /** @var string*/
+    private $doctorCode;
+    /** @var string*/
     private $responsibleNurse;
     /** @var string*/
     private $nthHospital;
@@ -92,10 +101,21 @@ class KangxinPatientInfo {
 
     /** @var KangxinProcedure[] */
     private $procedures = [];
+    /** @var KangxinDiagnosis[] */
+    private $diagnosis = [];
 
     /**
      * ******* GETTERS *******
      */
+    /**
+     * Returns the string representation of the object as it was received
+     *
+     * @return stdClass
+     */
+    public function getOriginalObject() {
+        return $this->originalObject;
+    }
+
     /**
      * Internal Patient ID in Kangxin hospital
      *
@@ -301,6 +321,7 @@ class KangxinPatientInfo {
     }
 
     /**
+     * Main diagnosis code
      *
      * @return string
      */
@@ -309,6 +330,7 @@ class KangxinPatientInfo {
     }
 
     /**
+     * Main diagnosis name
      *
      * @return string
      */
@@ -346,6 +368,14 @@ class KangxinPatientInfo {
      */
     public function getDoctor() {
         return $this->doctor;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getDoctorCode() {
+        return $this->doctorCode;
     }
 
     /**
@@ -395,6 +425,22 @@ class KangxinPatientInfo {
      */
     public function getNote() {
         return $this->note;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getOrder() {
+        return $this->order;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getOrderDate() {
+        return $this->orderDate;
     }
 
     /**
@@ -483,6 +529,14 @@ class KangxinPatientInfo {
      */
     public function getProcedures() {
         return $this->procedures;
+    }
+
+    /**
+     *
+     * @return KangxinDiagnosis[]
+     */
+    public function getDiagnosis() {
+        return $this->diagnosis;
     }
 
     /**
@@ -684,6 +738,7 @@ class KangxinPatientInfo {
     }
 
     /**
+     * Main diagnosis code
      *
      * @param string $value
      */
@@ -692,6 +747,7 @@ class KangxinPatientInfo {
     }
 
     /**
+     * Main diagnosis name
      *
      * @param string $value
      */
@@ -705,6 +761,12 @@ class KangxinPatientInfo {
      */
     public function setOtherDiseaseCodes($value) {
         $this->otherDiseaseCodes = $value;
+
+        $list = explode(',', $value);
+        foreach ($list as $ix => $v) {
+            $diagnosis = $this->findOrCreateDiagnosis($ix);
+            $diagnosis->setCode($v);
+        }
     }
 
     /**
@@ -713,11 +775,17 @@ class KangxinPatientInfo {
      */
     public function setDischargeOtherDiagnoses($value) {
         $this->dischargeOtherDiagnoses = $value;
+
+        $list = explode(',', $value);
+        foreach ($list as $ix => $v) {
+            $diagnosis = $this->findOrCreateDiagnosis($ix);
+            $diagnosis->setName($v);
+        }
     }
 
     /**
      *
-     * @param string $drugAllergy
+     * @param string $value
      */
     public function setDrugAllergy($value) {
         $this->drugAllergy = $value;
@@ -725,7 +793,7 @@ class KangxinPatientInfo {
 
     /**
      *
-     * @param string $doctor
+     * @param string $value
      */
     public function setDoctor($value) {
         $this->doctor = $value;
@@ -733,7 +801,15 @@ class KangxinPatientInfo {
 
     /**
      *
-     * @param string $responsibleNurse
+     * @param string $value
+     */
+    public function setDoctorCode($value) {
+        $this->doctorCode = $value;
+    }
+
+    /**
+     *
+     * @param string $value
      */
     public function setResponsibleNurse($value) {
         $this->responsibleNurse = $value;
@@ -778,6 +854,34 @@ class KangxinPatientInfo {
      */
     public function setNote($value) {
         $this->note = $value;
+    }
+
+    /**
+     *
+     * @param string $value
+     */
+    public function setOrder($value) {
+        $this->order = $value;
+
+        $list = explode(',', $value);
+        foreach ($list as $ix => $v) {
+            $procedure = $this->findOrCreateProcedure($ix);
+            $procedure->setOrder($v);
+        }
+    }
+
+    /**
+     *
+     * @param string $value
+     */
+    public function setOrderDate($value) {
+        $this->orderDate = $value;
+
+        $list = explode(',', $value);
+        foreach ($list as $ix => $v) {
+            $procedure = $this->findOrCreateProcedure($ix);
+            $procedure->setOrderDate($v);
+        }
     }
 
     /**
@@ -940,12 +1044,33 @@ class KangxinPatientInfo {
 
     /**
      *
+     * @param int $ix
+     * @return KangxinDiagnosis
+     */
+    private function findOrCreateDiagnosis($ix) {
+        if (array_key_exists($ix, $this->diagnosis)) {
+            $diagnosis = $this->diagnosis[$ix];
+        } else {
+            $diagnosis = new KangxinDiagnosis();
+            $this->diagnosis[$ix] = $diagnosis;
+        }
+        return $diagnosis;
+    }
+
+    /**
+     *
      * @param stdClass $info
      * @return KangxinPatientInfo
      */
     static function fromJson($info) {
+        /*
+         * Remove the "total" property included in al patient data, because it is not a patient information. It is the total number of records in the
+         * DB
+         */
+        unset($info->total);
         $patientInfo = new KangxinPatientInfo();
 
+        $patientInfo->originalObject = $info;
         $jsonVars = get_object_vars($info);
         foreach ($jsonVars as $name => $value) {
             $setterFn = 'set' . strtoupper(substr($name, 0, 1)) . substr($name, 1);

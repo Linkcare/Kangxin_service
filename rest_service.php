@@ -1,14 +1,10 @@
 <?php
 error_reporting(E_ERROR); // Do not report warnings to avoid undesired characters in output stream
-const SERVICE_STATUS_IDLE = 'idle';
-const SERVICE_STATUS_SUCCESS = 'success';
-const SERVICE_STATUS_ERROR = 'error';
 
 // Link the config params
 require_once ("lib/default_conf.php");
 
 setSystemTimeZone();
-
 error_reporting(0);
 
 if ($_SERVER['REQUEST_METHOD'] != 'POST') {
@@ -19,74 +15,66 @@ if ($_SERVER['REQUEST_METHOD'] != 'POST') {
 header('Content-type: application/json');
 
 $action = $_GET['function'];
-$responseCode = SERVICE_STATUS_IDLE;
-$responseMessage = '';
+
+$serviceResponse = new ServiceResponse(ServiceResponse::IDLE, 'Request received for action: ' . $action);
 
 $logger = ServiceLogger::init($GLOBALS['LOG_LEVEL'], $GLOBALS['LOG_DIR']);
 $connectionSuccessful = false;
 try {
+    Database::connect($GLOBALS['INTEGRATION_DBSERVER'], $GLOBALS['INTEGRATION_DATABASE'], $GLOBALS['INTEGRATION_DBUSER'],
+            $GLOBALS['INTEGRATION_DBPASSWORD']);
+
     // Connect as service user, reusing existing session if possible
     apiConnect(null, $GLOBALS['SERVICE_USER'], $GLOBALS['SERVICE_PASSWORD'], 47, $GLOBALS['SERVICE_TEAM'], true);
     $connectionSuccessful = true;
 } catch (Exception $e) {
-    $responseCode = SERVICE_STATUS_ERROR;
-    $responseMessage = 'Error connecting with the service user credentials: ' . $e->getMessage();
-    $logger->error($responseMessage);
+    $serviceResponse->setCode(ServiceResponse::ERROR);
+    $serviceResponse->setMessage('Error initializing service: ' . $e->getMessage());
+    $logger->error($serviceResponse->getMessage());
+    exit(1);
 }
+
+$processHistory = new ProcessHistory($action);
+$processHistory->save();
 
 if ($connectionSuccessful) {
     try {
         switch ($action) {
             case 'import_patients' :
-                $logger->trace('IMPORTING PATIENTS FROM KANGXIN');
+                $logger->trace('CREATION ADMISSIONS IN CARE PLAN');
                 $service = new ServiceFunctions(LinkcareSoapAPI::getInstance(), KangxinAPI::getInstance());
-                $res = $service->importPatients();
-                $errorMessages = $res['errors'];
-
-                $success = $res['success'];
-                $failed = $res['failed'];
-                $responseMessage = 'Patient import result: Success: ' . $success . ', Failed: ' . $failed;
-                if ($success + $failed == 0) {
-                    $responseCode = SERVICE_STATUS_IDLE;
-                } elseif ($failed > 0) {
-                    $responseCode = SERVICE_STATUS_ERROR;
-                } else {
-                    $responseCode = SERVICE_STATUS_SUCCESS;
-                }
-
-                $logger->trace('Successfully imported: ' . $res['success']);
-                $logger->trace('Failed: ' . $res['failed']);
-                if (!empty($errorMessages)) {
-                    $responseCode = SERVICE_STATUS_ERROR;
-                    $logger->error('IMPORT FINISHED WITH ERRORS', 1);
-                    foreach ($errorMessages as $msg) {
-                        $logger->error($msg, 2);
-                    }
-                }
+                $serviceResponse = $service->importPatients($processHistory);
+                break;
+            case 'import_patients' :
+                $logger->trace('IMPORTING PATIENT RECORDS FROM KANGXIN');
+                $fromRecord = $_GET['from'];
+                $service = new ServiceFunctions(LinkcareSoapAPI::getInstance(), KangxinAPI::getInstance());
+                $serviceResponse = $service->fetchKangxinRecords($processHistory, $fromRecord);
                 break;
             default :
-                $responseCode = SERVICE_STATUS_ERROR;
-                $responseMessage = 'function "' . $action . '" not implemented';
+                $serviceResponse->setCode(ServiceResponse::ERROR);
+                $serviceResponse->setMessage('function "' . $action . '" not implemented');
                 break;
         }
-    } catch (APIException $e) {
-        $responseCode = SERVICE_STATUS_ERROR;
-        $responseMessage = $e->getMessage();
-        $logger->error($responseMessage);
     } catch (Exception $e) {
-        $responseCode = SERVICE_STATUS_ERROR;
-        $responseMessage = $e->getMessage();
-        $logger->error($responseMessage);
+        $serviceResponse->setCode(ServiceResponse::ERROR);
+        $serviceResponse->setMessage($e->getMessage());
     }
 }
 
-$serviceResponse = new stdClass();
-$serviceResponse->code = $responseCode;
-$serviceResponse->message = $responseMessage;
-if (!empty($errorMessages)) {
-    foreach ($errorMessages as $errMsg) {
-        $serviceResponse->error_details[] = $errMsg;
+if ($serviceResponse->getCode() == ServiceResponse::ERROR) {
+    $processHistory->setStatus(ProcessHistory::STATUS_FAILURE);
+    $logger->error($serviceResponse->getMessage());
+} else {
+    $processHistory->setStatus(ProcessHistory::STATUS_SUCCESS);
+    $logger->trace($serviceResponse->getMessage());
+    $details = $processHistory->getLogs();
+    foreach ($details as $msg) {
+        $logger->error($msg->getMessage(), 2);
     }
 }
-echo json_encode($serviceResponse);
+$processHistory->setOutputMessage($serviceResponse->getMessage());
+$processHistory->setEndDate(currentDate());
+$processHistory->save();
 
+echo $serviceResponse->toString();

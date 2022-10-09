@@ -15,4 +15,10 @@ class ErrorCodes {
 
     /** @var string Generic error */
     const UNEXPECTED_ERROR = 'UNEXPECTED_ERROR';
+
+    /** @var string JSON string is not valid */
+    const INVALID_JSON = 'INVALID_JSON';
+
+    /** @var string An error happened executing a DB command */
+    const DB_ERROR = 'DB_ERROR';
 }

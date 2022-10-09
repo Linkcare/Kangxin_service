@@ -228,6 +228,7 @@ class ServiceLogger {
 
         if ($this->toSTDOUT) {
             echo ($logMsg . $lineBreak);
+            ob_flush();
         } else {
             error_log($logMsg);
         }

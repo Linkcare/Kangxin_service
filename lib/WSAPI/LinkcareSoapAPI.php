@@ -319,6 +319,26 @@ class LinkcareSoapAPI {
 
     /**
      *
+     * @param int $admissionId
+     * @throws APIException
+     */
+    function admission_discharge($admissionId, $type = null, $date = null) {
+        $params = ["admission" => $admissionId, 'type' => $type, 'date' => $date];
+        $this->invoke('admission_discharge', $params);
+    }
+
+    /**
+     *
+     * @param int $admissionId
+     * @throws APIException
+     */
+    function admission_resume($admissionId, $date = null) {
+        $params = ["admission" => $admissionId, 'date' => $date];
+        $this->invoke('admission_resume', $params);
+    }
+
+    /**
+     *
      * @param int $taskId
      * @throws APIException
      * @return APITask

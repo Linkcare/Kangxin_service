@@ -301,6 +301,12 @@ class APITask {
     }
 
     /**
+     */
+    public function save() {
+        $this->api->task_set($this);
+    }
+
+    /**
      *
      * @param XMLHelper $xml
      * @return SimpleXMLElement $parentNode

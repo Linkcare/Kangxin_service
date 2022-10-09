@@ -12,6 +12,12 @@ class APICase {
     private $timezone;
     /* @var APIIdentifier[] $identifiers */
     private $identifiers = [];
+    /** @var LinkcareSoapAPI $api */
+    private $api;
+
+    public function __construct() {
+        $this->api = LinkcareSoapAPI::getInstance();
+    }
 
     /**
      *
@@ -127,5 +133,27 @@ class APICase {
      */
     public function getIdentifiers() {
         return $this->identifiers;
+    }
+
+    /*
+     * **********************************
+     * METHODS
+     * **********************************
+     */
+
+    /**
+     *
+     * @param int $maxRes
+     * @param int $offset
+     * @param TaskFilter $filter
+     * @param boolean $ascending
+     * @return APITask[]
+     */
+    public function getTaskList($maxRes = null, $offset = null, $filter = null, $ascending = true) {
+        if (!$filter) {
+            $filter = new TaskFilter();
+        }
+        $filter->setObjectType('TASKS');
+        return $this->api->case_get_task_list($this->id, $maxRes, $offset, $filter, $ascending);
     }
 }

@@ -42,6 +42,19 @@ $GLOBALS['TEAM_CODE'] = 'xxxxx';
  */
 $GLOBALS['PATIENT_IDENTIFIER_TEAM'] = 'LINKCARE';
 
+/*
+ * Database credentials
+ */
+$GLOBALS['INTEGRATION_DATABASE'] = 'linkcare';
+$GLOBALS['INTEGRATION_DBSERVER'] = 'xxx.linkcareapp.com';
+$GLOBALS['INTEGRATION_DBUSER'] = 'KANGXIN_INTEGRATION';
+$GLOBALS['INTEGRATION_DBPASSWORD'] = 'yyy';
+$GLOBALS['SYSDBA_DBUSER'] = '';
+$GLOBALS['SYS_DBPASSWORD'] = '';
+
+// Time between requests to the KANGXIN API to avoid blocking the server
+$GLOBALS['KANGXIN_REQUEST_DELAY'] = 30;
+
 /* LOAD CUSTOMIZED CONFIGURATION */
 if (file_exists(__DIR__ . '/../conf/configuration.php')) {
     include_once __DIR__ . '/../conf/configuration.php';
@@ -50,15 +63,20 @@ if (file_exists(__DIR__ . '/../conf/configuration.php')) {
 /*
  * INTERNAL CONFIGURATION VARIABLES (not customizable)
  */
+require_once 'classes/Database.php';
 require_once 'classes/ServiceLogger.php';
 require_once 'classes/ErrorCodes.php';
 require_once 'classes/ServiceException.php';
 require_once 'classes/KangxinItemCodes.php';
 require_once 'classes/KangxinProcedure.php';
+require_once 'classes/KangxinDiagnosis.php';
 require_once 'classes/KangxinPatientInfo.php';
 require_once 'classes/KangxinAPI.php';
+require_once 'classes/ProcessHistory.php';
+require_once 'classes/RecordPool.php';
 require_once 'utils.php';
 require_once 'WSAPI/WSAPI.php';
+require_once 'classes/ServiceResponse.php';
 require_once 'classes/ServiceFunctions.php';
 require_once 'functions.php';
 

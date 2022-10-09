@@ -344,6 +344,11 @@ class APIQuestion {
         if (in_array($this->getType(), self::OPTIONS_TYPES)) {
             $xml->createChildNode($parentNode, "value", '');
             $xml->createChildNode($parentNode, "option_id", $this->getValue());
+        } elseif ($this->getType() == self::TYPE_CODE) {
+            $valObj = new stdClass();
+            $valObj->code = $this->getValue();
+            $xml->createChildNode($parentNode, "value", json_encode($valObj));
+            $xml->createChildNode($parentNode, "option_id", '');
         } else {
             $xml->createChildNode($parentNode, "value", $this->getValue());
             $xml->createChildNode($parentNode, "option_id", '');

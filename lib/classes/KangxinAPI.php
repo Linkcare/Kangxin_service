@@ -3,6 +3,10 @@
 class KangxinAPI {
     private static $instance;
     private $endpoint;
+    private $totalExpected = 0;
+    /** @var int */
+    private $delay;
+    private $lastRequestTime = 0;
 
     private function __construct($endpoint) {
         $this->endpoint = trim($endpoint, '/') . '/';
@@ -15,6 +19,10 @@ class KangxinAPI {
         return self::$instance;
     }
 
+    public function setDelay($seconds) {
+        $this->delay = $seconds;
+    }
+
     /**
      * Invokes the Kangxin API to retrieve a list of patients that should be imported in the Linkcare platform
      *
@@ -23,6 +31,11 @@ class KangxinAPI {
      * @return KangxinPatientInfo[]
      */
     public function requestPatientList($pageSize, $pageNum) {
+        $waitTime = $this->delay - (microtime(true) - $this->lastRequestTime);
+        if ($waitTime > 0) {
+            usleep($waitTime * 1000000);
+        }
+
         if ($GLOBALS['SIMULATE_KANGXIN_API']) {
             $resp = $this->simulatedData($pageSize, $pageNum);
         } else {
@@ -31,16 +44,35 @@ class KangxinAPI {
             $resp = $this->invokeAPI('healthData/opernInfos', $params);
         }
 
+        $this->lastRequestTime = microtime(true);
+
         if (!is_array($resp)) {
             throw new ServiceException(ErrorCodes::API_INVALID_DATA_FORMAT, 'healthData/opernInfos function should return an array as response');
         }
 
         $patients = [];
         foreach ($resp as $info) {
+            $this->totalExpected = intval($info->total);
             $patients[] = KangxinPatientInfo::fromJson($info);
         }
 
         return $patients;
+    }
+
+    /**
+     * Return the total number of expected records
+     *
+     * @return number
+     */
+    public function countTotalExpected() {
+        if (!$this->totalExpected) {
+            /*
+             * Invoke the API to get the total number of records expected.
+             * This value is refreshed each time the API is invoked
+             */
+            $this->requestPatientList(1, 1);
+        }
+        return $this->totalExpected;
     }
 
     /**
@@ -147,9 +179,56 @@ class KangxinAPI {
         $simulated = '{
           "code": 0,
           "msg": "成功",
-          "result": [
+          "result": [{
+              "sickId": "99680312",
+              "sickNum": "SickNum 1",
+              "name": "PCI Test patient",
+              "sex": "女",
+              "birthDate": "1968-03-12",
+              "age": 54,
+              "currentAddress": "Camino del Discharge 99",
+              "nation": "中国",
+              "identityNumber": "990212194412094125",
+              "phone": "99594125051",
+              "contactName": "Assoc. name 1",
+              "contactPhone": "Assoc. phone 1",
+              "relation": "Associate relation 1",
+              "residenceNo": "9000198005",
+              "nthHospital": 1,
+              "actualHospitalDays": 25,
+              "admissionTime": "2022-09-25 01:37:48",
+              "admissionDepartment": "Adm. Department",
+              "admissionWard": "Adm. Ward",
+              "hospitalAdmission": "Hospital admission number",
+              "order": "Order1,Order2,Order3,Order4",
+              "orderDate": "2022-09-27,2022-09-27,2022-09-27,2022-09-27",
+              "operationLevel": "1,2,3,4",
+              "operationType": "T1,T2,T3,T4",
+              "operationSurgeon": "Surgeon1,Surgeon2,Surgeon3,Surgeon4",
+              "operationCode": "Code1,Code 2,Code 3,Code 4",
+              "operationName": "OpName1,OpName2,OpName3,OpName4",
+              "operationDate": "2022-09-26,2022-09-27,2022-09-28,2022-09-29",
+              "operationName1": "p1_n1,p2_n1",
+              "operationName2": "p1_n2,p2_n2",
+              "operationName3": ",p2_n3,p3_n3",
+              "operationName4": ",,p3_n4,p4_n4",
+              "drugAllergy": "Penicilin",
+              "doctor": "Doctor name",
+              "doctorCode": "12345",
+              "responsibleNurse": "Mary Responsible",
+              "dischargeTime": "2022-09-30 23:52:36",
+              "dischargeDepartment": "Disch Dept",
+              "dischargeWard": "Disch Ward",
+              "dischargeDiseaseCode": "Disch Disease Code",
+              "dischargeMainDiagnosis": "Disch Main Diag",
+              "otherDiseaseCodes": "Other disease codes",
+              "dischargeOtherDiagnoses": "Disch other diag",
+              "dischargeSituation": "Disch Situation",
+              "dischargeInstructions": "Disch Instructions",
+              "Hospitalized": "Hosp. Info",
+              "note": "Notes of the episode"
+            },
             {
-              "total": 4325,
               "sickId": "0000000908",
               "name": "赖宝泉",
               "sex": "女",
@@ -185,7 +264,6 @@ class KangxinAPI {
               "note": "1962/1包，0.25g/1包，CC507/1包、120*40/2包"
             },
             {
-              "total": 4325,
               "sickId": "0000001118",
               "name": "孟云坤",
               "sex": "男",
@@ -222,7 +300,6 @@ class KangxinAPI {
               "note": "120*40/2,，0.25g/2，cc507/1"
             },
             {
-              "total": 4325,
               "sickId": "0000001764",
               "name": "徐开秀",
               "sex": "女",
@@ -258,7 +335,6 @@ class KangxinAPI {
               "dischargeOtherDiagnoses": "腹主动脉血栓形成,髂外动脉狭窄,肾动脉狭窄,高血压3级 极高危,非风湿性三尖瓣关闭不全,非风湿性主动脉瓣关闭不全,升主动脉扩张"
             },
             {
-              "total": 4325,
               "sickId": "0000001784",
               "name": "刘连梅",
               "sex": "女",
@@ -295,7 +371,6 @@ class KangxinAPI {
               "note": "120*40/2,cc507/1,0.25g/1"
             },
             {
-              "total": 4325,
               "sickId": "0000001893",
               "name": "陈元芬",
               "sex": "女",
@@ -332,7 +407,6 @@ class KangxinAPI {
               "note": "cc507/1包，120*40/1包，0.25g/2包，1962/1包"
             },
             {
-              "total": 4325,
               "sickId": "0000001893",
               "name": "陈元芬",
               "sex": "女",
@@ -372,7 +446,6 @@ class KangxinAPI {
               "note": "cc507/1包，120*40/1包，0.25g/2包，1962/1包"
             },
             {
-              "total": 4325,
               "sickId": "0000002155",
               "name": "刘仁永",
               "sex": "男",
@@ -408,7 +481,6 @@ class KangxinAPI {
               "note": "0.25g/2包，120*40/2包，1962/1包"
             },
             {
-              "total": 4325,
               "sickId": "0000002184",
               "name": "钟庆梅",
               "sex": "女",
@@ -445,7 +517,6 @@ class KangxinAPI {
               "note": "cc507/1包，0.25g/2包，120*40/1包，1962/1包"
             },
             {
-              "total": 4325,
               "sickId": "0000002732",
               "name": "易铭泽",
               "sex": "男",
@@ -481,7 +552,6 @@ class KangxinAPI {
               "note": "0.25g/1包，cc507/1片，120*40/1片"
             },
             {
-              "total": 4325,
               "sickId": "0000003605",
               "name": "陈逸钒",
               "sex": "男",
@@ -515,7 +585,6 @@ class KangxinAPI {
               "note": "120*40/1包，507/1片"
             },
             {
-              "total": 4325,
               "sickId": "0000003590",
               "name": "罗关素",
               "sex": "女",
@@ -552,7 +621,6 @@ class KangxinAPI {
               "note": "120*40/2包，507/1片，0.25g/2包"
             },
             {
-              "total": 4325,
               "sickId": "0000003585",
               "name": "杨和先",
               "sex": "男",
@@ -587,7 +655,6 @@ class KangxinAPI {
               "note": "120*40/2，0.25g/2，1962/1，CC507/1"
             },
             {
-              "total": 4325,
               "sickId": "0000003585",
               "name": "杨和先",
               "sex": "男",
@@ -621,7 +688,6 @@ class KangxinAPI {
               "note": "120*40/2，0.25g/2，1962/1，CC507/1"
             },
             {
-              "total": 4325,
               "sickId": "0000003585",
               "name": "杨和先",
               "sex": "男",
@@ -657,7 +723,6 @@ class KangxinAPI {
               "note": "120*40/2，0.25g/2，1962/1，CC507/1"
             },
             {
-              "total": 4325,
               "sickId": "0000000882",
               "name": "龚秋洁",
               "sex": "女",
@@ -692,7 +757,6 @@ class KangxinAPI {
               "dischargeOtherDiagnoses": "非风湿性三尖瓣关闭不全"
             },
             {
-              "total": 4325,
               "sickId": "0000000871",
               "name": "朱文菊",
               "sex": "女",
@@ -728,7 +792,6 @@ class KangxinAPI {
               "dischargeOtherDiagnoses": "先天性三尖瓣关闭不全,继发性肺动脉高压"
             },
             {
-              "total": 4325,
               "sickId": "0000000922",
               "name": "刘荣华",
               "sex": "女",
@@ -766,7 +829,6 @@ class KangxinAPI {
               "note": "120*40/1个，cc507/1个，0.25g/1个"
             },
             {
-              "total": 4325,
               "sickId": "0000000862",
               "name": "张仁翠",
               "sex": "女",
@@ -803,7 +865,6 @@ class KangxinAPI {
               "note": "120*40/2个，cc507/1个，0.25g/2个，"
             },
             {
-              "total": 4325,
               "sickId": "0000000877",
               "name": "洛桑卓嘎",
               "sex": "女",
@@ -839,7 +900,6 @@ class KangxinAPI {
               "note": "0.25g/1个，cc507/1个"
             },
             {
-              "total": 4325,
               "sickId": "0000000955",
               "name": "秦宇航",
               "sex": "男",
@@ -874,7 +934,6 @@ class KangxinAPI {
               "note": "0.25g/1个，cc507/1个"
             },
             {
-              "total": 4325,
               "sickId": "0000000987",
               "name": "江世梅",
               "sex": "女",
@@ -910,7 +969,6 @@ class KangxinAPI {
               "note": "0.25g/1包，cc507/1包，120*40/2包"
             },
             {
-              "total": 4325,
               "sickId": "0000001012",
               "name": "卢灯香",
               "sex": "女",
@@ -947,7 +1005,6 @@ class KangxinAPI {
               "note": "120*40/3包，0.25g/1包，cc507/1包"
             },
             {
-              "total": 4325,
               "sickId": "0000001912",
               "name": "吴盈滢",
               "sex": "女",
@@ -984,7 +1041,6 @@ class KangxinAPI {
               "note": "120*40/1片，CC507/1包"
             },
             {
-              "total": 4325,
               "sickId": "0000001829",
               "name": "闫梅英",
               "sex": "女",
@@ -1022,7 +1078,6 @@ class KangxinAPI {
               "note": "120*40/2片，CC507/2包，0.25g/1支"
             },
             {
-              "total": 4325,
               "sickId": "0000001856",
               "name": "户寿宇",
               "sex": "女",
@@ -1057,7 +1112,6 @@ class KangxinAPI {
               "note": "120*40/2片，CC507/1包，0.25g/2支"
             },
             {
-              "total": 4325,
               "sickId": "0000001856",
               "name": "户寿宇",
               "sex": "女",
@@ -1095,7 +1149,6 @@ class KangxinAPI {
               "note": "120*40/2片，CC507/1包，0.25g/2支"
             },
             {
-              "total": 4325,
               "sickId": "0000015802",
               "name": "何平英",
               "sex": "女",
@@ -1132,7 +1185,6 @@ class KangxinAPI {
               "note": "cc507/1个，120*40*3/1个"
             },
             {
-              "total": 4325,
               "sickId": "0000000838",
               "name": "杨盛铭",
               "sex": "男",
@@ -1166,7 +1218,6 @@ class KangxinAPI {
               "dischargeMainDiagnosis": "室间隔缺损"
             },
             {
-              "total": 4325,
               "sickId": "0000000825",
               "name": "蔡明诗",
               "sex": "男",
@@ -1201,7 +1252,6 @@ class KangxinAPI {
               "dischargeOtherDiagnoses": "三尖瓣返流,心功能Ⅱ级,颈动脉硬化"
             },
             {
-              "total": 4325,
               "sickId": "0000000984",
               "name": "唐明星",
               "sex": "男",
@@ -1237,7 +1287,6 @@ class KangxinAPI {
               "note": "0.25g/1个，cc507/1个"
             },
             {
-              "total": 4325,
               "sickId": "0000001177",
               "name": "王金山",
               "sex": "男",
@@ -1273,7 +1322,6 @@ class KangxinAPI {
               "note": "cc507，120*40"
             },
             {
-              "total": 4325,
               "sickId": "0000001882",
               "name": "杨绍俊",
               "sex": "男",
@@ -1309,7 +1357,6 @@ class KangxinAPI {
               "dischargeOtherDiagnoses": "心功能I级"
             },
             {
-              "total": 4325,
               "sickId": "0000002071",
               "name": "李成香",
               "sex": "女",
@@ -1342,7 +1389,6 @@ class KangxinAPI {
               "dischargeMainDiagnosis": "腹主动脉瘤"
             },
             {
-              "total": 4325,
               "sickId": "0000002196",
               "name": "黄贵兰",
               "sex": "男",
@@ -1378,7 +1424,6 @@ class KangxinAPI {
               "dischargeOtherDiagnoses": "高血压3级"
             },
             {
-              "total": 4325,
               "sickId": "0000002262",
               "name": "柳作中",
               "sex": "男",
@@ -1414,7 +1459,6 @@ class KangxinAPI {
               "dischargeOtherDiagnoses": "高血压2级 很高危"
             },
             {
-              "total": 4325,
               "sickId": "0000002268",
               "name": "冉洪碧",
               "sex": "女",
@@ -1450,7 +1494,6 @@ class KangxinAPI {
               "dischargeOtherDiagnoses": "上消化道出血,胃溃疡"
             },
             {
-              "total": 4325,
               "sickId": "0000001974",
               "name": "常淑花",
               "sex": "女",
@@ -1486,7 +1529,6 @@ class KangxinAPI {
               "dischargeOtherDiagnoses": "二尖瓣及三尖瓣关闭不全,心功能二级,肺动脉高压,二尖瓣轻度关闭不全,三尖瓣中度关闭不全"
             },
             {
-              "total": 4325,
               "sickId": "0000003689",
               "name": "陈能英",
               "sex": "女",
@@ -1517,7 +1559,6 @@ class KangxinAPI {
               "note": "120*40/1，CC507/1，0.25g/2"
             },
             {
-              "total": 4325,
               "sickId": "0000003689",
               "name": "陈能英",
               "sex": "女",
@@ -1553,7 +1594,6 @@ class KangxinAPI {
               "note": "120*40/1，CC507/1，0.25g/2"
             },
             {
-              "total": 4325,
               "sickId": "0000003944",
               "name": "李福万",
               "sex": "男",
@@ -1590,7 +1630,6 @@ class KangxinAPI {
               "note": "120*40/2，CC507/2,0.25g/1"
             },
             {
-              "total": 4325,
               "sickId": "0000003944",
               "name": "李福万",
               "sex": "男",
@@ -1622,7 +1661,6 @@ class KangxinAPI {
               "note": "120*40/2，CC507/2,0.25g/1"
             },
             {
-              "total": 4325,
               "sickId": "0000004274",
               "name": "赵清文",
               "sex": "女",
@@ -1658,7 +1696,6 @@ class KangxinAPI {
               "note": "120*40/2,0.5g/1，cc507/1"
             },
             {
-              "total": 4325,
               "sickId": "0000000913",
               "name": "余烜宜",
               "sex": "女",
@@ -1695,7 +1732,6 @@ class KangxinAPI {
               "note": "0.25g/1个，1962/1个，120*40/1个"
             },
             {
-              "total": 4325,
               "sickId": "0000001834",
               "name": "黄远常",
               "sex": "男",
@@ -1730,7 +1766,6 @@ class KangxinAPI {
               "dischargeOtherDiagnoses": "腹主动脉血栓形成,髂内动脉狭窄,亚临床甲状腺功能减退症,高甘油三脂血症"
             },
             {
-              "total": 4325,
               "sickId": "0000000962",
               "name": "胡树香",
               "sex": "女",
@@ -1764,7 +1799,6 @@ class KangxinAPI {
               "note": "CC507/1个，0.25g/2个，120*40/2个,1962/1个"
             },
             {
-              "total": 4325,
               "sickId": "0000000962",
               "name": "胡树香",
               "sex": "女",
@@ -1797,7 +1831,6 @@ class KangxinAPI {
               "note": "CC507/1个，0.25g/2个，120*40/2个,1962/1个"
             },
             {
-              "total": 4325,
               "sickId": "0000000962",
               "name": "胡树香",
               "sex": "女",
@@ -1836,7 +1869,6 @@ class KangxinAPI {
               "note": "CC507/1个，0.25g/2个，120*40/2个,1962/1个"
             },
             {
-              "total": 4325,
               "sickId": "0000001786",
               "name": "罗志成",
               "sex": "男",
@@ -1872,7 +1904,6 @@ class KangxinAPI {
               "note": "120x40/1，0.25g/1"
             },
             {
-              "total": 4325,
               "sickId": "0000002273",
               "name": "杜明国",
               "sex": "男",
@@ -1908,7 +1939,6 @@ class KangxinAPI {
               "dischargeOtherDiagnoses": "高血压3级,肺部感染"
             },
             {
-              "total": 4325,
               "sickId": "0000003420",
               "name": "胡宗凡",
               "sex": "男",
@@ -1949,6 +1979,10 @@ class KangxinAPI {
         }';
 
         $resp = json_decode($simulated);
-        return array_slice($resp->result, ($pageNum - 1) * $pageSize, $pageSize);
+        $records = array_slice($resp->result, ($pageNum - 1) * $pageSize, $pageSize);
+        foreach ($records as $r) {
+            $r->total = count($records);
+        }
+        return $records;
     }
 }
