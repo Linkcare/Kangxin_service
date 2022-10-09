@@ -53,7 +53,7 @@ $GLOBALS['SYSDBA_DBUSER'] = '';
 $GLOBALS['SYS_DBPASSWORD'] = '';
 
 // Time between requests to the KANGXIN API to avoid blocking the server
-$GLOBALS['KANGXIN_REQUEST_DELAY'] = 30;
+$GLOBALS['KANGXIN_REQUEST_DELAY'] = 5;
 
 /* LOAD CUSTOMIZED CONFIGURATION */
 if (file_exists(__DIR__ . '/../conf/configuration.php')) {
