@@ -265,6 +265,10 @@ class ServiceFunctions {
                 $admission = $this->createAdmission($patient, $kangxinRecord, $subscription);
             }
             $this->updateEpisodeData($admission, $kangxinRecord);
+            // Discharge the Admission if necessary
+            if ($kangxinRecord->getDischargeTime() && $admission->getStatus() != 'DISCHARGED') {
+                $admission->discharge(null, $kangxinRecord->getDischargeTime());
+            }
         } catch (ServiceException $se) {
             $errMsg = 'Import service generated an exception: ' . $se->getMessage();
             $errCode = $se->getCode();
@@ -723,10 +727,6 @@ class ServiceFunctions {
             $episodeTask->setDate($date);
             $episodeTask->setHour($time);
             $episodeTask->save();
-        }
-
-        if ($importInfo->getDischargeTime() && $importInfo->getDischargeTime() < '2022-10-01') {
-            $admission->discharge(null, $importInfo->getDischargeTime());
         }
     }
 }

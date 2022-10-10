@@ -314,7 +314,7 @@ class RecordPool {
         $arrVariables[':startOffset'] = $startOffset;
         $arrVariables[':endOffset'] = $endOffset;
         $sql = 'SELECT * FROM (
-                	SELECT rp.*,ROW_NUMBER() OVER(ORDER BY LAST_UPDATE,ID_RECORD_POOL) RN FROM RECORD_POOL rp WHERE CHANGED=1 ORDER BY LAST_UPDATE,ID_RECORD_POOL ASC 
+                	SELECT rp.*,ROW_NUMBER() OVER(ORDER BY LAST_UPDATE,ID_RECORD_POOL) RN FROM RECORD_POOL rp WHERE CHANGED=1 ORDER BY ID_PATIENT,ADMISSION_DATE ASC 
                 ) WHERE RN >=:startOffset AND RN<:endOffset';
         $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
         while ($rst->Next()) {
