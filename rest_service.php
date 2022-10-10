@@ -45,7 +45,7 @@ if ($connectionSuccessful) {
                 $service = new ServiceFunctions(LinkcareSoapAPI::getInstance(), KangxinAPI::getInstance());
                 $serviceResponse = $service->importPatients($processHistory);
                 break;
-            case 'import_patients' :
+            case 'fetch_kangxin_records' :
                 $logger->trace('IMPORTING PATIENT RECORDS FROM KANGXIN');
                 $fromRecord = $_GET['from'];
                 $service = new ServiceFunctions(LinkcareSoapAPI::getInstance(), KangxinAPI::getInstance());

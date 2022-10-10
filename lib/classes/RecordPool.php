@@ -8,6 +8,8 @@ class RecordPool {
     /** @var string */
     private $episodeId;
     /** @var string */
+    private $admissionDate;
+    /** @var string */
     private $creationDate;
     /** @var string */
     private $lastUpdate;
@@ -19,9 +21,10 @@ class RecordPool {
     private $changed;
     private $updateNeeded = [];
 
-    public function __construct($patientId = null, $episodeId = null) {
+    public function __construct($patientId = null, $episodeId = null, $admissionDate = null) {
         $this->patientId = $patientId;
         $this->episodeId = $episodeId;
+        $this->admissionDate = $admissionDate;
     }
 
     /**
@@ -50,6 +53,15 @@ class RecordPool {
     }
 
     /**
+     * Start date of the episode
+     *
+     * @return string
+     */
+    public function getAdmissionDate() {
+        return $this->admissionDate;
+    }
+
+    /**
      * Last update date
      *
      * @return string
@@ -68,7 +80,7 @@ class RecordPool {
     }
 
     /**
-     * Returns one of the following value
+     * Returns one of the following values
      * <ul>
      * <li>0: The record has no changes and has been processed (imported in the Linkcare platform)</li>
      * <li>1: The record has been updated with the information received from Kangxin</li>
@@ -109,6 +121,24 @@ class RecordPool {
     }
 
     /**
+     *
+     * @param string $value
+     */
+    public function setAdmissionDate($value) {
+        if ($value == $this->admissionDate) {
+            return;
+        }
+        $this->admissionDate = $value;
+        $this->updateNeeded[':admissionDate'] = 'ADMISSION_DATE'; // Name of the field in DB
+    }
+
+    /**
+     * Sets the 'changed' mark to one of the following values
+     * <ul>
+     * <li>0: The record has no changes and has been processed (imported in the Linkcare platform)</li>
+     * <li>1: The record has been updated with the information received from Kangxin</li>
+     * <li>2: The record generated an error while trying to import it in the Linkcare platform</li>
+     * </ul>
      *
      * @param string $value
      */
@@ -206,6 +236,7 @@ class RecordPool {
         $arrVariables[':id'] = $this->id;
         $arrVariables[':lastUpdate'] = $this->lastUpdate;
         $arrVariables[':patientId'] = $this->patientId;
+        $arrVariables[':admissionDate'] = $this->admissionDate;
         $arrVariables[':episodeId'] = $this->episodeId;
         $arrVariables[':changed'] = $this->changed;
         $arrBlobVariables = null;
@@ -219,8 +250,8 @@ class RecordPool {
 
         $sql = null;
         if ($isNew) {
-            $sql = "INSERT INTO RECORD_POOL (ID_RECORD_POOL, ID_PATIENT, ID_EPISODE, CREATION_DATE, LAST_UPDATE, CHANGED $sqlBytesFieldName)
-                    VALUES (:id, :patientId, :episodeId, :creationDate, :lastUpdate, :changed $sqlBytesInsert)";
+            $sql = "INSERT INTO RECORD_POOL (ID_RECORD_POOL, ID_PATIENT, ID_EPISODE, ADMISSION_DATE, CREATION_DATE, LAST_UPDATE, CHANGED $sqlBytesFieldName)
+                    VALUES (:id, :patientId, :episodeId, :admissionDate, :creationDate, :lastUpdate, :changed $sqlBytesInsert)";
         } elseif (count($this->updateNeeded) > 0 || $this->recordContentModified) {
             $sqlUpdates = [];
             foreach ($this->updateNeeded as $varName => $fieldName) {
@@ -262,6 +293,10 @@ class RecordPool {
         $toCompare = json_decode(json_encode($recordContent, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), true);
         ksort($toCompare);
 
+        if (json_encode($current) != json_encode($toCompare)) {
+            file_put_contents($current['residenceNo'] . '_current.txt', json_encode($current, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            file_put_contents($toCompare['residenceNo'] . '_new.txt', json_encode($toCompare, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
         return (json_encode($current) == json_encode($toCompare));
     }
 
@@ -273,14 +308,14 @@ class RecordPool {
      */
     public function loadChanged($pageSize, $pageNum) {
         $records = [];
-        $startOffset = max($pageNum - 1, 0) * pageSize + 1;
+        $startOffset = max($pageNum - 1, 0) * $pageSize + 1;
         $endOffset = $startOffset + $pageSize;
 
         $arrVariables[':startOffset'] = $startOffset;
         $arrVariables[':endOffset'] = $endOffset;
         $sql = 'SELECT * FROM (
-                	SELECT ID_RECORD_POOL FROM RECORD_POOL WHERE CHANGED=1 ORDER BY LAST_UPDATE,ID_RECORD_POOL ASC 
-                ) WHERE ROWNUM >=:startOffset AND ROWNUM<:endOffset';
+                	SELECT rp.*,ROW_NUMBER() OVER(ORDER BY LAST_UPDATE,ID_RECORD_POOL) RN FROM RECORD_POOL rp WHERE CHANGED=1 ORDER BY LAST_UPDATE,ID_RECORD_POOL ASC 
+                ) WHERE RN >=:startOffset AND RN<:endOffset';
         $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
         while ($rst->Next()) {
             $records[] = self::loadDBRecord($rst);

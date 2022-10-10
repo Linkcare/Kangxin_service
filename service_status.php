@@ -18,7 +18,7 @@ try {
     exit(1);
 }
 
-$serviceNames = ['import_patients' => 'Import patients in PHM', 'fetch_kangxin_records' => 'Fecth episodes from Kangxin'];
+$serviceNames = ['import_patients' => 'Import patients in PHM', 'fetch_kangxin_records' => 'Fetch episodes from Kangxin'];
 
 $status = [];
 foreach ($serviceNames as $name => $description) {
@@ -36,7 +36,8 @@ foreach ($serviceNames as $name => $description) {
     if ($endDate = $processInfo->getEndDate()) {
         $info->duration = (strtotime($endDate) - strtotime($startDate)) . 's';
     } else {
-        $info->duration = 'Process not finished';
+        $info->duration = (strtotime(currentDate()) - strtotime($startDate)) . 's';
+        ;
     }
     $info->message = $processInfo->getOutputMessage();
     foreach ($processInfo->getLogs() as $log) {

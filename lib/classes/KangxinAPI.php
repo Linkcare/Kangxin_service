@@ -4,17 +4,21 @@ class KangxinAPI {
     private static $instance;
     private $endpoint;
     private $totalExpected = 0;
+    private $timeout = 30;
     /** @var int */
     private $delay;
     private $lastRequestTime = 0;
 
-    private function __construct($endpoint) {
+    private function __construct($endpoint, $timeout = null) {
         $this->endpoint = trim($endpoint, '/') . '/';
+        if (is_numeric($timeout) && intval($timeout) > 0) {
+            $this->timeout = intval($timeout);
+        }
     }
 
     static public function getInstance() {
         if (!self::$instance) {
-            self::$instance = new KangxinAPI($GLOBALS['KANGXIN_API_URL']);
+            self::$instance = new KangxinAPI($GLOBALS['KANGXIN_API_URL'], $GLOBALS['KANGXIN_API_TIMEOUT']);
         }
         return self::$instance;
     }
@@ -96,8 +100,9 @@ class KangxinAPI {
         }
 
         $options = [CURLOPT_POST => true, CURLOPT_HEADER => false, CURLOPT_AUTOREFERER => true, CURLOPT_CONNECTTIMEOUT => 10,
-                CURLOPT_HTTPHEADER => $headers, CURLOPT_TIMEOUT => 15, CURLOPT_POSTFIELDS => $params, CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
-                CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => false, CURLOPT_RETURNTRANSFER => 1];
+                CURLOPT_HTTPHEADER => $headers, CURLOPT_TIMEOUT => $this->timeout, CURLOPT_POSTFIELDS => $params,
+                CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2, CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_RETURNTRANSFER => 1];
         $curl = curl_init($endpoint);
         curl_setopt_array($curl, $options);
         curl_setopt($curl, CURLOPT_HEADERFUNCTION, [$this, "handleHeaderLine"]);

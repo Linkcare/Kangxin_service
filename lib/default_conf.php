@@ -23,6 +23,7 @@ $GLOBALS['SERVICE_TEAM'] = 'LINKCARE';
 
 /* Endpoint URL of the Kangxin API */
 $GLOBALS['KANGXIN_API_URL'] = 'http://kangxin_api';
+$GLOBALS['KANGXIN_API_TIMEOUT'] = 30;
 
 /*
  * Maximum number of patients that should be imported to the Linkcare platform in one execution. 0 means no limit (continue while there are records to

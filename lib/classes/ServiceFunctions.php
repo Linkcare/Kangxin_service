@@ -122,7 +122,6 @@ class ServiceFunctions {
      */
     public function importPatients($processHistory) {
         $serviceResponse = new ServiceResponse(ServiceResponse::IDLE, 'Process started');
-
         try {
             $subscription = $this->apiLK->subscription_get($GLOBALS['PROGRAM_CODE'], $GLOBALS['TEAM_CODE']);
         } catch (Exception $e) {
@@ -134,13 +133,14 @@ class ServiceFunctions {
             return $serviceResponse;
         }
 
-        $maxRecords = $GLOBALS['PATIENT_MAX'];
+        $maxRecords = min($GLOBALS['PATIENT_MAX'], 1000000);
         $page = 1;
         $pageSize = $GLOBALS['PATIENT_PAGE_SIZE'];
         $processed = 0;
         $importFailed = [];
         $success = [];
         $totalExpectedRecords = RecordPool::countTotalChanged();
+        ServiceLogger::getInstance()->debug('Process a maximum of: ' . $maxRecords . ' records');
         while ($processed < $maxRecords) {
             // $patientsToImport = $this->apiKangxin->requestPatientList($pageSize, $page++);
             $changedRecords = RecordPool::loadChanged($pageSize, $page++);
@@ -148,7 +148,7 @@ class ServiceFunctions {
             ServiceLogger::getInstance()->debug('Records requested: ' . $pageSize . ', received: ' . count($changedRecords));
             if (count($changedRecords) < $pageSize) {
                 // We have reached the last page, because we received less records than the requested
-                $maxRecords = $processed;
+                $maxRecords = $processed + count($changedRecords);
             }
             foreach ($changedRecords as $record) {
                 $patientInfo = KangxinPatientInfo::fromJson($record->getRecordContent());
@@ -158,8 +158,10 @@ class ServiceFunctions {
                 try {
                     $this->importIntoPHM($patientInfo, $subscription);
                     $success[] = $patientInfo;
+                    $record->setChanged(0);
                 } catch (Exception $e) {
                     $importFailed[] = $patientInfo;
+                    $record->setChanged(2);
                     $processHistory->addLog($e->getMessage());
                     ServiceLogger::getInstance()->error($e->getMessage(), 1);
                 }
@@ -209,7 +211,7 @@ class ServiceFunctions {
     private function processFetchedRecord($kangxinRecord) {
         $record = RecordPool::getInstance($kangxinRecord->getSickId(), $kangxinRecord->getResidenceNo());
         if (!$record) {
-            $record = new RecordPool($kangxinRecord->getSickId(), $kangxinRecord->getResidenceNo());
+            $record = new RecordPool($kangxinRecord->getSickId(), $kangxinRecord->getResidenceNo(), $kangxinRecord->getAdmissionTime());
             $record->setRecordContent($kangxinRecord->getOriginalObject());
             $ret = 1;
         } elseif ($record->equals($kangxinRecord->getOriginalObject())) {
@@ -251,7 +253,7 @@ class ServiceFunctions {
             $errCode = ErrorCodes::UNEXPECTED_ERROR;
         }
         if ($errMsg) {
-            $errMsg = 'ERROR CREATING PATIENT ' . $kangxinRecord->getName() . '(' . $kangxinRecord->getIdentityNumber() . '): ' . $errMsg;
+            $errMsg = 'ERROR CREATING PATIENT ' . $kangxinRecord->getName() . '(' . $kangxinRecord->getSickId() . '): ' . $errMsg;
             throw new ServiceException($errCode, $errMsg);
         }
 
@@ -444,7 +446,7 @@ class ServiceFunctions {
         $setupParameters->{KangxinItemCodes::NOTES} = $importInfo->getNote();
         $setupParameters->{KangxinItemCodes::SOURCE} = 2;
 
-        return $this->apiLK->admission_create($case->getId(), $subscription->getId(), null, null, true, $setupParameters);
+        return $this->apiLK->admission_create($case->getId(), $subscription->getId(), $importInfo->getAdmissionTime(), null, true, $setupParameters);
     }
 
     /**
@@ -712,6 +714,15 @@ class ServiceFunctions {
 
         if (!empty($arrQuestions)) {
             $this->apiLK->form_set_all_answers($episodeInfoForm->getId(), $arrQuestions, true);
+        }
+
+        if ($importInfo->getAdmissionTime()) {
+            $dateParts = explode(' ', $importInfo->getAdmissionTime());
+            $date = $dateParts[0];
+            $time = $dateParts[1];
+            $episodeTask->setDate($date);
+            $episodeTask->setHour($time);
+            $episodeTask->save();
         }
 
         if ($importInfo->getDischargeTime() && $importInfo->getDischargeTime() < '2022-10-01') {

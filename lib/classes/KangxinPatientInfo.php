@@ -1063,12 +1063,15 @@ class KangxinPatientInfo {
      * @return KangxinPatientInfo
      */
     static function fromJson($info) {
+        $patientInfo = new KangxinPatientInfo();
+        if (!$info) {
+            return $patientInfo;
+        }
         /*
          * Remove the "total" property included in al patient data, because it is not a patient information. It is the total number of records in the
          * DB
          */
         unset($info->total);
-        $patientInfo = new KangxinPatientInfo();
 
         $patientInfo->originalObject = $info;
         $jsonVars = get_object_vars($info);
