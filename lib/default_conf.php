@@ -34,14 +34,14 @@ $GLOBALS['PATIENT_MAX'] = 0;
 $GLOBALS['PATIENT_PAGE_SIZE'] = 50;
 
 /* Program and Team codes of the Subscription where the admissions of the patients will be created */
-$GLOBALS['PROGRAM_CODE'] = 'xxxxx';
+$GLOBALS['PROGRAM_CODE'] = 'KANGXIN_ADMISSIONS';
 $GLOBALS['TEAM_CODE'] = 'xxxxx';
-
+$GLOBALS['DATE_THRESHOLD'] = '2022-10-01';
 /*
  * The Patient Identifier is not globally unique. It is only unique in a particular Hospital.
  * The following configuration variable defines the Team for which the Patient Identifier (the Kangxin Hospital Team)
  */
-$GLOBALS['PATIENT_IDENTIFIER_TEAM'] = 'LINKCARE';
+$GLOBALS['PATIENT_IDENTIFIER_TEAM'] = 'xxx';
 
 /*
  * Database credentials

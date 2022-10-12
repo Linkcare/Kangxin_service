@@ -37,13 +37,16 @@ class APIAdmission {
     /**
      *
      * @param SimpleXMLElement $xmlNode
+     * @param APIAdmission $admission (optional) if provided, the data will be stored in this APIAdmission object
      * @return APIAdmission
      */
-    static public function parseXML($xmlNode) {
+    static public function parseXML($xmlNode, $admission = null) {
         if (!$xmlNode) {
             return null;
         }
-        $admission = new APIAdmission();
+        if (!$admission) {
+            $admission = new APIAdmission();
+        }
         $admission->id = (string) $xmlNode->ref;
         $admission->status = NullableString($xmlNode->status); // admission_create returns the status at this level
         $admission->isNewAdmission = $xmlNode->type != "EXIST";
@@ -207,6 +210,59 @@ class APIAdmission {
 
     /*
      * **********************************
+     * SETTERS
+     * **********************************
+     */
+    /**
+     *
+     * @param string $value
+     */
+    public function setEnrolDate($value) {
+        $this->enrolDate = $value;
+    }
+
+    /**
+     *
+     * @param string $value
+     */
+    public function setAdmissionDate($value) {
+        $this->admissionDate = $value;
+    }
+
+    /**
+     *
+     * @param string $value
+     */
+    public function setDischargeRequestDate($value) {
+        $this->dischargeRequestDate = $value;
+    }
+
+    /**
+     *
+     * @param string $value
+     */
+    public function setDischargeDate($value) {
+        $this->dischargeDate = $value;
+    }
+
+    /**
+     *
+     * @param string $value
+     */
+    public function setSuspendedDate($value) {
+        $this->suspendedDate = $value;
+    }
+
+    /**
+     *
+     * @param string $value
+     */
+    public function setRejectedDate($value) {
+        $this->rejectedDate = $value;
+    }
+
+    /*
+     * **********************************
      * METHODS
      * **********************************
      */
@@ -266,7 +322,7 @@ class APIAdmission {
      * @param string $date
      */
     public function discharge($type = null, $date = null) {
-        $this->api->admission_discharge($this->id, $type, $date);
+        $this->api->admission_discharge($this->id, $type, $date, $this);
     }
 
     /**
@@ -274,6 +330,45 @@ class APIAdmission {
      * @param string $date
      */
     public function resume($date = null) {
-        $this->api->admission_resume($this->id, $date);
+        $this->api->admission_resume($this->id, $date, $this);
+    }
+
+    /**
+     */
+    public function save() {
+        $this->api->admission_set($this);
+    }
+
+    /**
+     *
+     * @param XMLHelper $xml
+     * @return SimpleXMLElement $parentNode
+     */
+    public function toXML($xml, $parentNode = null) {
+        if ($parentNode === null) {
+            $parentNode = $xml->rootNode;
+        }
+        $xml->createChildNode($parentNode, "ref", $this->getId());
+
+        $dataNode = $xml->createChildNode($parentNode, "data");
+
+        if ($this->getEnrolDate() !== null) {
+            $xml->createChildNode($dataNode, "enrol_date", $this->getEnrolDate());
+        }
+        if ($this->getAdmissionDate() !== null) {
+            $xml->createChildNode($dataNode, "admission_date", $this->getAdmissionDate());
+        }
+        if ($this->getDischargeRequestDate() !== null) {
+            $xml->createChildNode($dataNode, "discharge_request_date", $this->getDischargeRequestDate());
+        }
+        if ($this->getDischargeDate() !== null) {
+            $xml->createChildNode($dataNode, "discharge_date", $this->getDischargeDate());
+        }
+        if ($this->getSuspendedDate() !== null) {
+            $xml->createChildNode($dataNode, "suspended_date", $this->getSuspendedDate());
+        }
+        if ($this->getRejectedDate() !== null) {
+            $xml->createChildNode($dataNode, "rejected_date", $this->getRejectedDate());
+        }
     }
 }

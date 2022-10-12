@@ -283,6 +283,18 @@ class LinkcareSoapAPI {
 
     /**
      *
+     * @param APIAdmission $admission
+     * @throws APIException
+     */
+    function admission_set($admission) {
+        $xml = new XMLHelper('admission');
+        $admission->toXML($xml, null);
+        $params = ["admission" => $xml->toString()];
+        $this->invoke('admission_set', $params);
+    }
+
+    /**
+     *
      * @param int $admissionId
      * @throws APIException
      */
@@ -320,21 +332,40 @@ class LinkcareSoapAPI {
     /**
      *
      * @param int $admissionId
+     * @param string $type of discharge
+     * @param string $date (optional) date of the discharge. By default is the current datetime
+     * @param APIAdmission $admission (optional) if provided, the data will be stored in this APIAdmission object
      * @throws APIException
      */
-    function admission_discharge($admissionId, $type = null, $date = null) {
+    function admission_discharge($admissionId, $type = null, $date = null, $admission = null) {
         $params = ["admission" => $admissionId, 'type' => $type, 'date' => $date];
-        $this->invoke('admission_discharge', $params);
+        $resp = $this->invoke('admission_discharge', $params);
+        if (!$resp->getErrorCode()) {
+            if ($res = simplexml_load_string($resp->getResult())) {
+                $admission = APIAdmission::parseXML($res, $admission);
+            }
+        }
+
+        return $admission;
     }
 
     /**
      *
      * @param int $admissionId
+     * @param string $date (optional) date of the resume. By default is the current datetime
+     * @param APIAdmission $admission (optional) if provided, the data will be stored in this APIAdmission object
      * @throws APIException
      */
-    function admission_resume($admissionId, $date = null) {
+    function admission_resume($admissionId, $date = null, $admission = null) {
         $params = ["admission" => $admissionId, 'date' => $date];
-        $this->invoke('admission_resume', $params);
+        $resp = $this->invoke('admission_resume', $params);
+        if (!$resp->getErrorCode()) {
+            if ($res = simplexml_load_string($resp->getResult())) {
+                $admission = APIAdmission::parseXML($res, $admission);
+            }
+        }
+
+        return $admission;
     }
 
     /**
@@ -750,7 +781,7 @@ class LinkcareSoapAPI {
             return new APIResponse($result, null, null);
         } else {
             if ($result['ErrorCode']) {
-                throw new APIException($result['ErrorCode'], $result['ErrorMsg'], $result['result']);
+                throw new APIException($result['ErrorCode'], $functionName . ':' . $result['ErrorMsg'], $result['result']);
             }
 
             return new APIResponse($result['result'], $result['ErrorCode'], $result['ErrorMsg']);

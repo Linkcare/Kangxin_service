@@ -203,9 +203,10 @@ class RecordPool {
         $obj = new RecordPool();
         $obj->id = $rst->GetField('ID_RECORD_POOL');
         $obj->creationDate = $rst->GetField('CREATION_DATE');
+        $obj->lastUpdate = $rst->GetField('LAST_UPDATE');
         $obj->patientId = $rst->GetField('ID_PATIENT');
         $obj->episodeId = $rst->GetField('ID_EPISODE');
-        $obj->lastUpdate = $rst->GetField('LAST_UPDATE');
+        $obj->admissionDate = $rst->GetField('ADMISSION_DATE');
         $obj->recordContent = $rst->GetField('RECORD_CONTENT');
         $obj->changed = intval($rst->GetField('CHANGED'));
 
@@ -293,10 +294,6 @@ class RecordPool {
         $toCompare = json_decode(json_encode($recordContent, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), true);
         ksort($toCompare);
 
-        if (json_encode($current) != json_encode($toCompare)) {
-            file_put_contents($current['residenceNo'] . '_current.txt', json_encode($current, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            file_put_contents($toCompare['residenceNo'] . '_new.txt', json_encode($toCompare, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        }
         return (json_encode($current) == json_encode($toCompare));
     }
 

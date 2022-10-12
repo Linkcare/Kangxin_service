@@ -10,9 +10,10 @@ class ServiceFunctions {
     private $apiKangxin;
 
     /* Other Constants */
-    const PATIENT_HISTORY_TASK_CODE = 'PCI_DCH_KANGXIN_IMPORT';
-    const EPISODE_FORM_CODE = 'PCI_DCH_KANGXIN_IMPORT_FORM';
+    const PATIENT_HISTORY_TASK_CODE = 'KANGXIN_IMPORT';
+    const EPISODE_FORM_CODE = 'KANGXIN_IMPORT_FORM';
     const EPISODE_ID_ITEM_CODE = 'RESIDENCE_NO';
+    const KANGXIN_ENROL_SELECT = 'KANGXIN_ENROL_SELECT';
 
     /**
      *
@@ -69,7 +70,7 @@ class ServiceFunctions {
             }
             if (count($patientsToImport) < $pageSize) {
                 // We have reached the last page, because we received less records than the requested
-                $maxRecords = $processed;
+                $maxRecords = $processed + count($patientsToImport);
             }
             foreach ($patientsToImport as $patientInfo) {
                 ServiceLogger::getInstance()->debug(
@@ -142,7 +143,7 @@ class ServiceFunctions {
         $totalExpectedRecords = RecordPool::countTotalChanged();
         ServiceLogger::getInstance()->debug('Process a maximum of: ' . $maxRecords . ' records');
         while ($processed < $maxRecords) {
-            // $patientsToImport = $this->apiKangxin->requestPatientList($pageSize, $page++);
+            // Retrieve the list of records received from Kangxin marked as "changed"
             $changedRecords = RecordPool::loadChanged($pageSize, $page++);
 
             ServiceLogger::getInstance()->debug('Records requested: ' . $pageSize . ', received: ' . count($changedRecords));
@@ -266,8 +267,18 @@ class ServiceFunctions {
             }
             $this->updateEpisodeData($admission, $kangxinRecord);
             // Discharge the Admission if necessary
-            if ($kangxinRecord->getDischargeTime() && $admission->getStatus() != 'DISCHARGED') {
-                $admission->discharge(null, $kangxinRecord->getDischargeTime());
+            if ($kangxinRecord->getDischargeTime()) {
+                if ($admission->getStatus() != APIAdmission::STATUS_DISCHARGED && $kangxinRecord->getDischargeTime() < $GLOBALS['DATE_THRESHOLD']) {
+                    $admission->discharge(null, $kangxinRecord->getDischargeTime());
+                } elseif ($admission->getStatus() == APIAdmission::STATUS_DISCHARGED &&
+                        $admission->getDischargeDate() != $kangxinRecord->getDischargeTime()) {
+                    // The ADMISSION was discharged, but the date has changed
+                    $admission->setDischargeDate();
+                    $admission->save();
+                }
+            }
+            if ($admission->getStatus() != APIAdmission::STATUS_DISCHARGED) {
+                $this->createSelectionTask($admission);
             }
         } catch (ServiceException $se) {
             $errMsg = 'Import service generated an exception: ' . $se->getMessage();
@@ -728,5 +739,22 @@ class ServiceFunctions {
             $episodeTask->setHour($time);
             $episodeTask->save();
         }
+    }
+
+    /**
+     * Creates the TASK (if not created yet) for the Case Manager to select a patient for the PCI Discharge program
+     *
+     * @param APIAdmission $admission
+     */
+    private function createSelectionTask($admission) {
+        $filter = new TaskFilter();
+        $filter->setTaskCodes(self::KANGXIN_ENROL_SELECT);
+        $existingTasks = $admission->getTaskList(1, 0, $filter);
+
+        if (count($existingTasks) > 0) {
+            // Not necessary to insert the TASK because it already exists
+            return;
+        }
+        $admission->insertTask(self::KANGXIN_ENROL_SELECT);
     }
 }
