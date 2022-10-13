@@ -40,7 +40,7 @@ class KangxinDiagnosis {
      * @param string $value
      */
     public function setCode($value) {
-        $this->code = $value;
+        $this->code = trim($value);
     }
 
     /**
@@ -48,6 +48,6 @@ class KangxinDiagnosis {
      * @param string $value
      */
     public function setName($value) {
-        $this->name = $value;
+        $this->name = trim($value);
     }
 }

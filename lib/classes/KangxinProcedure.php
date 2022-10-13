@@ -135,7 +135,7 @@ class KangxinProcedure {
      * @param string $value
      */
     public function setOrder($value) {
-        $this->order = $value;
+        $this->order = trim($value);
     }
 
     /**
@@ -143,7 +143,7 @@ class KangxinProcedure {
      * @param string $value
      */
     public function setOrderDate($value) {
-        $this->orderDate = $value;
+        $this->orderDate = trim($value);
     }
 
     /**
@@ -151,7 +151,7 @@ class KangxinProcedure {
      * @param string $value
      */
     public function setOperationCode($value) {
-        $this->operationCode = $value;
+        $this->operationCode = trim($value);
     }
 
     /**
@@ -159,7 +159,7 @@ class KangxinProcedure {
      * @param string $value
      */
     public function setOperationName($value) {
-        $this->operationName = $value;
+        $this->operationName = trim($value);
     }
 
     /**
@@ -167,7 +167,7 @@ class KangxinProcedure {
      * @param string $value
      */
     public function setOperationName1($value) {
-        $this->operationName1 = $value;
+        $this->operationName1 = trim($value);
     }
 
     /**
@@ -175,7 +175,7 @@ class KangxinProcedure {
      * @param string $value
      */
     public function setOperationName2($value) {
-        $this->operationName2 = $value;
+        $this->operationName2 = trim($value);
     }
 
     /**
@@ -183,7 +183,7 @@ class KangxinProcedure {
      * @param string $value
      */
     public function setOperationName3($value) {
-        $this->operationName3 = $value;
+        $this->operationName3 = trim($value);
     }
 
     /**
@@ -191,7 +191,7 @@ class KangxinProcedure {
      * @param string $value
      */
     public function setOperationName4($value) {
-        $this->operationName4 = $value;
+        $this->operationName4 = trim($value);
     }
 
     /**
@@ -199,7 +199,7 @@ class KangxinProcedure {
      * @param string $value
      */
     public function setOperationDate($value) {
-        $this->operationDate = $value;
+        $this->operationDate = trim($value);
     }
 
     /**
@@ -207,7 +207,7 @@ class KangxinProcedure {
      * @param string $value
      */
     public function setOperationSurgeon($value) {
-        $this->operationSurgeon = $value;
+        $this->operationSurgeon = trim($value);
     }
 
     /**
@@ -215,7 +215,7 @@ class KangxinProcedure {
      * @param string $value
      */
     public function setOperationLevel($value) {
-        $this->operationLevel = $value;
+        $this->operationLevel = trim($value);
     }
 
     /**
@@ -223,6 +223,6 @@ class KangxinProcedure {
      * @param string $value
      */
     public function setOperationType($value) {
-        $this->operationType = $value;
+        $this->operationType = trim($value);
     }
 }
