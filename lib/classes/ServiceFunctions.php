@@ -58,10 +58,10 @@ class ServiceFunctions {
 
         while ($processed < $maxRecords) {
             try {
-                $patientsToImport = $this->apiKangxin->requestPatientList($pageSize, $page++);
+                $patientsToImport = $this->apiKangxin->requestPatientList($pageSize, $page);
                 $totalExpectedRecords = min($maxRecords, $this->apiKangxin->countTotalExpected());
-                ServiceLogger::getInstance()->debug(
-                        "Patients requested to Kangxin (page $page): " . $GLOBALS['PATIENT_BATCH_SIZE'] . ', received: ' . count($patientsToImport));
+                ServiceLogger::getInstance()->debug("Patients requested to Kangxin: $pageSize (page $page), received: " . count($patientsToImport));
+                $page++;
             } catch (Exception $e) {
                 $errMsg = 'ERROR in the request to the Kangxin API: ' . $e->getMessage();
                 $processHistory->addLog($errMsg);
@@ -144,9 +144,10 @@ class ServiceFunctions {
         ServiceLogger::getInstance()->debug('Process a maximum of: ' . $maxRecords . ' records');
         while ($processed < $maxRecords) {
             // Retrieve the list of records received from Kangxin marked as "changed"
-            $changedRecords = RecordPool::loadChanged($pageSize, $page++);
+            $changedRecords = RecordPool::loadChanged($pageSize, $page);
 
-            ServiceLogger::getInstance()->debug('Records requested: ' . $pageSize . ', received: ' . count($changedRecords));
+            ServiceLogger::getInstance()->debug("Records requested: $pageSize (page $page), received: " . count($changedRecords));
+            $page++;
             if (count($changedRecords) < $pageSize) {
                 // We have reached the last page, because we received less records than the requested
                 $maxRecords = $processed + count($changedRecords);
