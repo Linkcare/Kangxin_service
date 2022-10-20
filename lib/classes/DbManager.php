@@ -6,6 +6,7 @@ class DbManager {
     var $Passwd;
     var $Database;
     var $Persistent;
+    var $asSysDba = false;
 
     function SetHost($inputHost) {
         $this->Host = $inputHost;
@@ -25,6 +26,14 @@ class DbManager {
 
     function SetPersistent($persistent = true) {
         $this->Persistent = $persistent;
+    }
+
+    /**
+     *
+     * @param boolean $asSysDba
+     */
+    function connectAsSysDba($asSysDba) {
+        $this->asSysDba = $asSysDba;
     }
 
     function GetHost() {

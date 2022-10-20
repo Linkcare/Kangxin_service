@@ -7,45 +7,75 @@ class KangxinPatientInfo {
     /** @var string*/
     private $sickId;
     /** @var string*/
-    private $residenceNo;
+    private $sickNum;
     /** @var string*/
     private $name;
     /** @var string*/
     private $sex;
     /** @var string*/
     private $birthDate;
-    /** @var number*/
-    private $age;
     /** @var string*/
-    private $currentAddress;
+    private $ethnicity;
     /** @var string*/
-    private $nation;
+    private $nationality;
     /** @var string*/
-    private $identityNumber;
+    private $idCard;
+    /** @var string*/
+    private $idCardType;
     /** @var string*/
     private $phone;
     /** @var string*/
     private $contactName;
     /** @var string*/
+    private $contactPhone;
+    /** @var string*/
     private $relation;
     /** @var string*/
-    private $contactPhone;
+    private $marital;
+    /** @var string*/
+    private $kind;
+    /** @var string*/
+    private $profession;
+    /** @var string*/
+    private $drugAllergy;
+    /** @var string*/
+    private $residenceNo;
+    /** @var string*/
+    private $visitNumber;
     /** @var string*/
     private $admissionTime;
     /** @var string*/
-    private $admissionDepartment;
-    /** @var string*/
-    private $admissionWard;
-    /** @var string*/
-    private $hospitalAdmission;
+    private $admissionDept;
     /** @var string*/
     private $dischargeTime;
     /** @var string*/
-    private $dischargeDepartment;
+    private $dischargeDept;
     /** @var string*/
-    private $dischargeWard;
-    /** @var  number*/
-    private $actualHospitalDays;
+    private $doctor;
+    /** @var string*/
+    private $responsibleNurse;
+    /** @var string*/
+    private $dischargeStatus;
+    /** @var string*/
+    private $hospitalAdmission;
+    /** @var string*/
+    private $dischargeSituation;
+    /** @var string*/
+    private $dischargeInstructions;
+    /** @var string*/
+    private $hospitalized;
+    /** @var string*/
+    private $applyOperatNo;
+    /** @var string*/
+    private $processOrder;
+    /** @var string*/
+    private $updateTime;
+
+    // Information regarding diagnosis
+    /** @var string*/
+    private $admissionDiag;
+    /** @var string*/
+    private $dischargeDiag;
     /** @var string*/
     private $dischargeDiseaseCode;
     /** @var string*/
@@ -54,50 +84,6 @@ class KangxinPatientInfo {
     private $otherDiseaseCodes;
     /** @var string*/
     private $dischargeOtherDiagnoses;
-    /** @var string*/
-    private $operationCode;
-    /** @var string*/
-    private $order;
-    /** @var string*/
-    private $orderDate;
-    /** @var string*/
-    private $operationName;
-    /** @var string*/
-    private $operationName1;
-    /** @var string*/
-    private $operationName2;
-    /** @var string*/
-    private $operationName3;
-    /** @var string*/
-    private $operationName4;
-    /** @var string*/
-    private $operationDate;
-    /** @var string*/
-    private $operationLevel;
-    /** @var string*/
-    private $operationSurgeon;
-    /** @var string*/
-    private $operationType;
-    /** @var string*/
-    private $drugAllergy;
-    /** @var string*/
-    private $doctor;
-    /** @var string*/
-    private $doctorCode;
-    /** @var string*/
-    private $responsibleNurse;
-    /** @var string*/
-    private $nthHospital;
-    /** @var string*/
-    private $hospitalized;
-    /** @var string*/
-    private $dischargeSituation;
-    /** @var string*/
-    private $dischargeInstructions;
-    /** @var string*/
-    private $note;
-    /** @var string*/
-    private $sickNum;
 
     /** @var KangxinProcedure[] */
     private $procedures = [];
@@ -155,10 +141,14 @@ class KangxinPatientInfo {
     /**
      * Patient gender
      *
+     * @param callable $mapValueFn Function to map the internal value to another value
      * @return string
      */
-    public function getSex() {
-        return $this->sex;
+    public function getSex($mapValueFn = null) {
+        if (!$mapValueFn) {
+            return $this->sex;
+        }
+        return $mapValueFn($this->sex);
     }
 
     /**
@@ -171,21 +161,16 @@ class KangxinPatientInfo {
     }
 
     /**
-     * Age at the time of admission
+     * Patient Ethnicity
      *
-     * @return number
-     */
-    public function getAge() {
-        return $this->age;
-    }
-
-    /**
-     * Patient Current Address
-     *
+     * @param callable $mapValueFn Function to map the internal value to another value
      * @return string
      */
-    public function getCurrentAddress() {
-        return $this->currentAddress;
+    public function getEthnicity($mapValueFn = null) {
+        if (!$mapValueFn) {
+            return $this->ethnicity;
+        }
+        return $mapValueFn($this->ethnicity);
     }
 
     /**
@@ -193,28 +178,26 @@ class KangxinPatientInfo {
      *
      * @return string
      */
-    public function getNation() {
-        return $this->nation;
+    public function getNationality() {
+        return $this->nationality;
     }
 
     /**
+     * Patient identifier
      *
      * @return string
      */
-    public function getNationCode() {
-        if ($this->nation == '中国') {
-            return 'CN';
-        }
-        return null;
+    public function getIdCard() {
+        return $this->idCard;
     }
 
     /**
-     * National ID
+     * Patient identifier type (national ID, passport...)
      *
      * @return string
      */
-    public function getIdentityNumber() {
-        return $this->identityNumber;
+    public function getIdCardType() {
+        return $this->idCardType;
     }
 
     /**
@@ -241,10 +224,49 @@ class KangxinPatientInfo {
     /**
      * Contact (associate) Relationship
      *
+     * @param callable $mapValueFn Function to map the internal value to another value
      * @return string
      */
-    public function getRelation() {
-        return $this->relation;
+    public function getRelation($mapValueFn = null) {
+        if (!$mapValueFn) {
+            return $this->relation;
+        }
+        return $mapValueFn($this->relation);
+    }
+
+    /**
+     * Marital status
+     *
+     * @param callable $mapValueFn Function to map the internal value to another value
+     * @return string
+     */
+    public function getMarital($mapValueFn = null) {
+        if (!$mapValueFn) {
+            return $this->marital;
+        }
+        return $mapValueFn($this->marital);
+    }
+
+    /**
+     * Patient type
+     *
+     * @return string
+     */
+    public function getKind() {
+        return $this->kind;
+    }
+
+    /**
+     * Patient profession
+     *
+     * @param callable $mapValueFn Function to map the internal value to another value
+     * @return string
+     */
+    public function getProfession($mapValueFn = null) {
+        if (!$mapValueFn) {
+            return $this->profession;
+        }
+        return $mapValueFn($this->profession);
     }
 
     /**
@@ -268,16 +290,8 @@ class KangxinPatientInfo {
      *
      * @return string
      */
-    public function getAdmissionDepartment() {
-        return $this->admissionDepartment;
-    }
-
-    /**
-     *
-     * @return string
-     */
-    public function getAdmissionWard() {
-        return $this->admissionWard;
+    public function getAdmissionDept() {
+        return $this->admissionDept;
     }
 
     /**
@@ -300,24 +314,32 @@ class KangxinPatientInfo {
      *
      * @return string
      */
-    public function getDischargeDepartment() {
-        return $this->dischargeDepartment;
+    public function getDischargeDept() {
+        return $this->dischargeDept;
     }
 
     /**
      *
      * @return string
      */
-    public function getDischargeWard() {
-        return $this->dischargeWard;
+    public function getDischargeStatus() {
+        return $this->dischargeStatus;
     }
 
     /**
      *
-     * @return number
+     * @return string
      */
-    public function getActualHospitalDays() {
-        return $this->actualHospitalDays;
+    public function getAdmissionDiag() {
+        return $this->admissionDiag;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getDischargeDiag() {
+        return $this->dischargeDiag;
     }
 
     /**
@@ -375,7 +397,12 @@ class KangxinPatientInfo {
      * @return string
      */
     public function getDoctorCode() {
-        return $this->doctorCode;
+        $parts = explode('/', $this->doctor);
+        if (count($parts) > 1) {
+            return $parts[1];
+        }
+
+        return null;
     }
 
     /**
@@ -387,12 +414,25 @@ class KangxinPatientInfo {
     }
 
     /**
+     *
+     * @return string
+     */
+    public function getResponsibleNurseCode() {
+        $parts = explode('/', $this->responsibleNurse);
+        if (count($parts) > 1) {
+            return $parts[1];
+        }
+
+        return null;
+    }
+
+    /**
      * Number of admissions
      *
      * @return string
      */
-    public function getNthHospital() {
-        return $this->nthHospital;
+    public function getVisitNumber() {
+        return $this->visitNumber;
     }
 
     /**
@@ -401,6 +441,15 @@ class KangxinPatientInfo {
      */
     public function getHospitalized() {
         return $this->hospitalized;
+    }
+
+    /**
+     * Application No.
+     *
+     * @return string
+     */
+    public function getApplyOperatNo() {
+        return $this->applyOperatNo;
     }
 
     /**
@@ -423,104 +472,8 @@ class KangxinPatientInfo {
      *
      * @return string
      */
-    public function getNote() {
-        return $this->note;
-    }
-
-    /**
-     *
-     * @return string
-     */
-    public function getOrder() {
-        return $this->order;
-    }
-
-    /**
-     *
-     * @return string
-     */
-    public function getOrderDate() {
-        return $this->orderDate;
-    }
-
-    /**
-     *
-     * @return string
-     */
-    public function getOperationCode() {
-        return $this->operationCode;
-    }
-
-    /**
-     *
-     * @return string
-     */
-    public function getOperationName() {
-        return $this->operationName;
-    }
-
-    /**
-     *
-     * @return string
-     */
-    public function getOperationName1() {
-        return $this->operationName1;
-    }
-
-    /**
-     *
-     * @return string
-     */
-    public function getOperationName2() {
-        return $this->operationName2;
-    }
-
-    /**
-     *
-     * @return string
-     */
-    public function getOperationName3() {
-        return $this->operationName3;
-    }
-
-    /**
-     *
-     * @return string
-     */
-    public function getOperationName4() {
-        return $this->operationName4;
-    }
-
-    /**
-     *
-     * @return string
-     */
-    public function getOperationDate() {
-        return $this->operationDate;
-    }
-
-    /**
-     *
-     * @return string
-     */
-    public function getOperationLevel() {
-        return $this->operationLevel;
-    }
-
-    /**
-     *
-     * @return string
-     */
-    public function getOperationSurgeon() {
-        return $this->operationSurgeon;
-    }
-
-    /**
-     *
-     * @return string
-     */
-    public function getOperationType() {
-        return $this->operationType;
+    public function getUpdateTime() {
+        return $this->updateTime;
     }
 
     /**
@@ -584,11 +537,6 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setSex($value) {
-        if (in_array($value, ['男', 'm', 'M'])) {
-            $value = 'M';
-        } elseif ($value) {
-            $value = 'F';
-        }
         $this->sex = $value;
     }
 
@@ -602,39 +550,39 @@ class KangxinPatientInfo {
     }
 
     /**
-     * Age at the time of admission
-     *
-     * @param number $value
-     */
-    public function setAge($value) {
-        $this->age = $value;
-    }
-
-    /**
-     * Patient Current Address
+     * Patient Ethnicity
      *
      * @param string $value
      */
-    public function setCurrentAddress($value) {
-        $this->currentAddress = $value;
+    public function setEthnicity($value) {
+        $this->ethnicity = $value;
     }
 
     /**
-     * Patient Nationality
+     * Patient Country
      *
      * @param string $value
      */
-    public function setNation($value) {
-        $this->nation = $value;
+    public function setNationality($value) {
+        $this->nationality = $value;
     }
 
     /**
-     * National ID
+     * Patient identifier
      *
      * @param string $value
      */
-    public function setIdentityNumber($value) {
-        $this->identityNumber = $value;
+    public function setIdCard($value) {
+        $this->idCard = $value;
+    }
+
+    /**
+     * Patient identifier type (national ID, passport...)
+     *
+     * @param string $value
+     */
+    public function setIdCardType($value) {
+        $this->idCardType = $value;
     }
 
     /**
@@ -665,6 +613,33 @@ class KangxinPatientInfo {
     }
 
     /**
+     * Marital status
+     *
+     * @param string $value
+     */
+    public function setMarital($value) {
+        $this->marital = $value;
+    }
+
+    /**
+     * Patient type
+     *
+     * @param string $value
+     */
+    public function setKind($value) {
+        $this->kind = $value;
+    }
+
+    /**
+     * Patient profession
+     *
+     * @param string $value
+     */
+    public function setProfession($value) {
+        $this->profession = $value;
+    }
+
+    /**
      * Contact (associate) phone
      *
      * @param string $value
@@ -685,16 +660,8 @@ class KangxinPatientInfo {
      *
      * @param string $value
      */
-    public function setAdmissionDepartment($value) {
-        $this->admissionDepartment = $value;
-    }
-
-    /**
-     *
-     * @param string $value
-     */
-    public function setAdmissionWard($value) {
-        $this->admissionWard = $value;
+    public function setAdmissionDept($value) {
+        $this->admissionDept = $value;
     }
 
     /**
@@ -717,24 +684,32 @@ class KangxinPatientInfo {
      *
      * @param string $value
      */
-    public function setDischargeDepartment($value) {
-        $this->dischargeDepartment = $value;
+    public function setDischargeDept($value) {
+        $this->dischargeDept = $value;
     }
 
     /**
      *
      * @param string $value
      */
-    public function setDischargeWard($value) {
-        $this->dischargeWard = $value;
+    public function setDischargeStatus($value) {
+        $this->dischargeStatus = $value;
     }
 
     /**
      *
-     * @param number $value
+     * @param string $value
      */
-    public function setActualHospitalDays($value) {
-        $this->actualHospitalDays = $value;
+    public function setAdmissionDiag($value) {
+        $this->admissionDiag = $value;
+    }
+
+    /**
+     *
+     * @param string $value
+     */
+    public function setDischargeDiag($value) {
+        $this->dischargeDiag = $value;
     }
 
     /**
@@ -756,6 +731,7 @@ class KangxinPatientInfo {
     }
 
     /**
+     * Other diagnosis codes
      *
      * @param string $value
      */
@@ -770,6 +746,7 @@ class KangxinPatientInfo {
     }
 
     /**
+     * Other diagnosis names
      *
      * @param string $value
      */
@@ -803,14 +780,6 @@ class KangxinPatientInfo {
      *
      * @param string $value
      */
-    public function setDoctorCode($value) {
-        $this->doctorCode = $value;
-    }
-
-    /**
-     *
-     * @param string $value
-     */
     public function setResponsibleNurse($value) {
         $this->responsibleNurse = $value;
     }
@@ -820,8 +789,8 @@ class KangxinPatientInfo {
      *
      * @param string $value
      */
-    public function setNthHospital($value) {
-        $this->nthHospital = $value;
+    public function setVisitNumber($value) {
+        $this->visitNumber = $value;
     }
 
     /**
@@ -830,6 +799,24 @@ class KangxinPatientInfo {
      */
     public function setHospitalized($value) {
         $this->hospitalized = $value;
+    }
+
+    /**
+     * Application No.
+     *
+     * @param string $value
+     */
+    public function setApplyOperatno($value) {
+        $this->applyOperatNo = $value;
+    }
+
+    /**
+     * Procedure Order Name
+     *
+     * @param string $value
+     */
+    public function setProcessOrder($value) {
+        $this->processOrder = $value;
     }
 
     /**
@@ -852,176 +839,8 @@ class KangxinPatientInfo {
      *
      * @param string $value
      */
-    public function setNote($value) {
-        $this->note = $value;
-    }
-
-    /**
-     *
-     * @param string $value
-     */
-    public function setOrder($value) {
-        $this->order = $value;
-
-        $list = explode(',', $value);
-        foreach ($list as $ix => $v) {
-            $procedure = $this->findOrCreateProcedure($ix);
-            $procedure->setOrder($v);
-        }
-    }
-
-    /**
-     *
-     * @param string $value
-     */
-    public function setOrderDate($value) {
-        $this->orderDate = $value;
-
-        $list = explode(',', $value);
-        foreach ($list as $ix => $v) {
-            $procedure = $this->findOrCreateProcedure($ix);
-            $procedure->setOrderDate($v);
-        }
-    }
-
-    /**
-     *
-     * @param string $value
-     */
-    public function setOperationCode($value) {
-        $this->operationCode = $value;
-
-        $list = explode(',', $value);
-        foreach ($list as $ix => $v) {
-            $procedure = $this->findOrCreateProcedure($ix);
-            $procedure->setOperationCode($v);
-        }
-    }
-
-    /**
-     *
-     * @param string $value
-     */
-    public function setOperationSurgeon($value) {
-        $this->operationSurgeon = $value;
-
-        $list = explode(',', $value);
-        foreach ($list as $ix => $v) {
-            $procedure = $this->findOrCreateProcedure($ix);
-            $procedure->setOperationSurgeon($v);
-        }
-    }
-
-    /**
-     *
-     * @param string $value
-     */
-    public function setOperationName($value) {
-        $this->operationName = $value;
-
-        $list = explode(',', $value);
-        foreach ($list as $ix => $v) {
-            $procedure = $this->findOrCreateProcedure($ix);
-            $procedure->setOperationName($v);
-        }
-    }
-
-    /**
-     *
-     * @param string $value
-     */
-    public function setOperationName1($value) {
-        $this->operationName1 = $value;
-
-        $list = explode(',', $value);
-        foreach ($list as $ix => $v) {
-            $procedure = $this->findOrCreateProcedure($ix);
-            $procedure->setOperationName1($v);
-        }
-    }
-
-    /**
-     *
-     * @param string $value
-     */
-    public function setOperationName2($value) {
-        $this->operationName2 = $value;
-
-        $list = explode(',', $value);
-        foreach ($list as $ix => $v) {
-            $procedure = $this->findOrCreateProcedure($ix);
-            $procedure->setOperationName2($v);
-        }
-    }
-
-    /**
-     *
-     * @param string $value
-     */
-    public function setOperationName3($value) {
-        $this->operationName3 = $value;
-
-        $list = explode(',', $value);
-        foreach ($list as $ix => $v) {
-            $procedure = $this->findOrCreateProcedure($ix);
-            $procedure->setOperationName3($v);
-        }
-    }
-
-    /**
-     *
-     * @param string $value
-     */
-    public function setOperationName4($value) {
-        $this->operationName4 = $value;
-
-        $list = explode(',', $value);
-        foreach ($list as $ix => $v) {
-            $procedure = $this->findOrCreateProcedure($ix);
-            $procedure->setOperationName4($v);
-        }
-    }
-
-    /**
-     *
-     * @param string $value
-     */
-    public function setOperationDate($value) {
-        $this->operationDate = $value;
-
-        $list = explode(',', $value);
-        foreach ($list as $ix => $v) {
-            $procedure = $this->findOrCreateProcedure($ix);
-            $procedure->setOperationDate($v);
-        }
-    }
-
-    /**
-     *
-     * @param string $value
-     */
-    public function setOperationLevel($value) {
-        $this->operationLevel = $value;
-
-        $list = explode(',', $value);
-        foreach ($list as $ix => $v) {
-            $procedure = $this->findOrCreateProcedure($ix);
-            $procedure->setOperationLevel($v);
-        }
-    }
-
-    /**
-     *
-     * @param string $value
-     */
-    public function setOperationType($value) {
-        $this->operationType = $value;
-
-        $list = explode(',', $value);
-        foreach ($list as $ix => $v) {
-            $procedure = $this->findOrCreateProcedure($ix);
-            $procedure->setOperationType($v);
-        }
+    public function setUpdateTime($value) {
+        $this->updateTime = $value;
     }
 
     /**
@@ -1029,15 +848,15 @@ class KangxinPatientInfo {
      */
     /**
      *
-     * @param int $ix
+     * @param int $operationId
      * @return KangxinProcedure
      */
-    private function findOrCreateProcedure($ix) {
-        if (array_key_exists($ix, $this->procedures)) {
-            $procedure = $this->procedures[$ix];
+    private function findOrCreateProcedure($operationId) {
+        if (array_key_exists($operationId, $this->procedures)) {
+            $procedure = $this->procedures[$operationId];
         } else {
-            $procedure = new KangxinProcedure();
-            $this->procedures[$ix] = $procedure;
+            $procedure = new KangxinProcedure($operationId);
+            $this->procedures[$operationId] = $procedure;
         }
         return $procedure;
     }
@@ -1058,6 +877,30 @@ class KangxinPatientInfo {
     }
 
     /**
+     * Extracts the information about an operation from a record received from the Kangxin hospital.
+     * A new KangxinOperation object will be added to the list of operations of the episode
+     *
+     * @param stdClass $info
+     */
+    public function addOperation($info) {
+        if (isNullOrEmpty($info->applyOperatNo)) {
+            return;
+        }
+        $procedure = $this->findOrCreateProcedure($info->applyOperatNo);
+        $procedure->setOperationType($info->operationType);
+        $procedure->setProcessOrder($info->processOrder);
+        $procedure->setOperationDoctor($info->operationDoctor);
+        $procedure->setOperationName($info->operationName);
+        $procedure->setOperationDate($info->operationDate);
+        $procedure->setOperationName1($info->operationName1);
+        $procedure->setOperationName2($info->operationName2);
+        $procedure->setOperationName3($info->operationName3);
+        $procedure->setOperationName4($info->operationName4);
+        $procedure->setOperationLevel($info->operationLevel);
+    }
+
+    /**
+     * Creates a KangxinPatientInfo object from the information received from the Kangxin hospital
      *
      * @param stdClass $info
      * @return KangxinPatientInfo
@@ -1067,11 +910,6 @@ class KangxinPatientInfo {
         if (!$info) {
             return $patientInfo;
         }
-        /*
-         * Remove the "total" property included in al patient data, because it is not a patient information. It is the total number of records in the
-         * DB
-         */
-        unset($info->total);
 
         $patientInfo->originalObject = $info;
         $jsonVars = get_object_vars($info);
@@ -1081,6 +919,8 @@ class KangxinPatientInfo {
             if (method_exists($patientInfo, $setterFn))
                 $patientInfo->{$setterFn}($value);
         }
+
+        $patientInfo->addOperation($info);
 
         return $patientInfo;
     }

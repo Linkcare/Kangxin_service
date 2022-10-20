@@ -23,7 +23,7 @@ $GLOBALS['SERVICE_TEAM'] = 'LINKCARE';
 
 /* Endpoint URL of the Kangxin API */
 $GLOBALS['KANGXIN_API_URL'] = 'http://kangxin_api';
-$GLOBALS['KANGXIN_API_TIMEOUT'] = 30;
+$GLOBALS['KANGXIN_API_TIMEOUT'] = 300;
 
 /*
  * Maximum number of patients that should be imported to the Linkcare platform in one execution. 0 means no limit (continue while there are records to
@@ -46,12 +46,14 @@ $GLOBALS['PATIENT_IDENTIFIER_TEAM'] = 'xxx';
 /*
  * Database credentials
  */
+// DB Credentials of a user with read/write privileges on the tables used by the service
 $GLOBALS['INTEGRATION_DATABASE'] = 'linkcare';
 $GLOBALS['INTEGRATION_DBSERVER'] = 'xxx.linkcareapp.com';
 $GLOBALS['INTEGRATION_DBUSER'] = 'KANGXIN_INTEGRATION';
 $GLOBALS['INTEGRATION_DBPASSWORD'] = 'yyy';
-$GLOBALS['SYSDBA_DBUSER'] = '';
-$GLOBALS['SYS_DBPASSWORD'] = '';
+// DB Credentials of a user with administrative privileges for creating schemas and tables
+$GLOBALS['ADMIN_DBUSER'] = '';
+$GLOBALS['ADMIN_DBPASSWORD'] = '';
 
 // Time between requests to the KANGXIN API to avoid blocking the server
 $GLOBALS['KANGXIN_REQUEST_DELAY'] = 5;
@@ -79,13 +81,10 @@ require_once 'utils.php';
 require_once 'WSAPI/WSAPI.php';
 require_once 'classes/ServiceResponse.php';
 require_once 'classes/ServiceFunctions.php';
+require_once 'classes/DeployFunctions.php';
 require_once 'functions.php';
 
 date_default_timezone_set($GLOBALS['DEFAULT_TIMEZONE']);
-
-// INTERNAL NAME IN LINKCARE PLATFORM OF THE IDENTIFIERS OF THE PATIENT
-/* Name of the Linkcare IDENTIFIER to store the National Id Card number of the patients (globally unique) */
-$GLOBALS['NATIONAL_IDENTIFIER'] = 'NAT_ZH';
 
 /*
  * Name of the Linkcare IDENTIFIER to store the Patient Id. Patient identifiers are not globally unique. They are only unique in an specific Team

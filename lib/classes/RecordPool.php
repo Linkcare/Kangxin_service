@@ -8,6 +8,10 @@ class RecordPool {
     /** @var string */
     private $episodeId;
     /** @var string */
+    private $operationId;
+    /** @var string */
+    private $operationDate;
+    /** @var string */
     private $admissionDate;
     /** @var string */
     private $creationDate;
@@ -21,10 +25,10 @@ class RecordPool {
     private $changed;
     private $updateNeeded = [];
 
-    public function __construct($patientId = null, $episodeId = null, $admissionDate = null) {
+    public function __construct($patientId = null, $episodeId = null, $operationId = null) {
         $this->patientId = $patientId;
         $this->episodeId = $episodeId;
-        $this->admissionDate = $admissionDate;
+        $this->operationId = $operationId;
     }
 
     /**
@@ -50,6 +54,24 @@ class RecordPool {
      */
     public function getEpisodeId() {
         return $this->episodeId;
+    }
+
+    /**
+     * Id of the operation (surgery intervention)
+     *
+     * @return string
+     */
+    public function getOperationId() {
+        return $this->operationId;
+    }
+
+    /**
+     * Date of the operation (surgery intervention)
+     *
+     * @return string
+     */
+    public function getOperationDate() {
+        return $this->operationDate;
     }
 
     /**
@@ -121,6 +143,32 @@ class RecordPool {
     }
 
     /**
+     * Id of the operation (surgery intervention)
+     *
+     * @param string $value
+     */
+    public function setOperationId($value) {
+        if ($value == $this->operationId) {
+            return;
+        }
+        $this->operationId = $value;
+        $this->updateNeeded[':operationId'] = 'ID_OPERATION'; // Name of the field in DB
+    }
+
+    /**
+     * Date of the operation (surgery intervention)
+     *
+     * @param string $value
+     */
+    public function setOperationDate($value) {
+        if ($value == $this->operationDate) {
+            return;
+        }
+        $this->operationDate = $value;
+        $this->updateNeeded[':operationDate'] = 'OPERATION_DATE'; // Name of the field in DB
+    }
+
+    /**
      *
      * @param string $value
      */
@@ -130,6 +178,18 @@ class RecordPool {
         }
         $this->admissionDate = $value;
         $this->updateNeeded[':admissionDate'] = 'ADMISSION_DATE'; // Name of the field in DB
+    }
+
+    /**
+     *
+     * @param string $value
+     */
+    public function setLastUpdate($value) {
+        if ($value == $this->lastUpdate) {
+            return;
+        }
+        $this->lastUpdate = $value;
+        $this->updateNeeded[':lastUpdate'] = 'LAST_UPDATE'; // Name of the field in DB
     }
 
     /**
@@ -181,10 +241,11 @@ class RecordPool {
      * @param int $id
      * @return RecordPool[]
      */
-    static public function getInstance($patientId, $episodeId) {
+    static public function getInstance($patientId, $episodeId, $operationId) {
         $arrVariables[':patientId'] = $patientId;
         $arrVariables[':episodeId'] = $episodeId;
-        $sql = 'SELECT * FROM RECORD_POOL WHERE ID_PATIENT=:patientId AND ID_EPISODE=:episodeId';
+        $arrVariables[':operationId'] = $operationId;
+        $sql = 'SELECT * FROM RECORD_POOL WHERE ID_PATIENT=:patientId AND ID_EPISODE=:episodeId AND ID_OPERATION=:operationId';
         $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
         $obj = null;
         if ($rst->Next()) {
@@ -202,10 +263,12 @@ class RecordPool {
     static private function loadDBRecord($rst) {
         $obj = new RecordPool();
         $obj->id = $rst->GetField('ID_RECORD_POOL');
-        $obj->creationDate = $rst->GetField('CREATION_DATE');
-        $obj->lastUpdate = $rst->GetField('LAST_UPDATE');
         $obj->patientId = $rst->GetField('ID_PATIENT');
         $obj->episodeId = $rst->GetField('ID_EPISODE');
+        $obj->operationId = $rst->GetField('ID_OPERATION');
+        $obj->operationDate = $rst->GetField('OPERATION_DATE');
+        $obj->creationDate = $rst->GetField('CREATION_DATE');
+        $obj->lastUpdate = $rst->GetField('LAST_UPDATE');
         $obj->admissionDate = $rst->GetField('ADMISSION_DATE');
         $obj->recordContent = $rst->GetField('RECORD_CONTENT');
         $obj->changed = intval($rst->GetField('CHANGED'));
@@ -233,12 +296,13 @@ class RecordPool {
             $arrVariables[':creationDate'] = $this->creationDate;
         }
 
-        $this->lastUpdate = $now;
         $arrVariables[':id'] = $this->id;
         $arrVariables[':lastUpdate'] = $this->lastUpdate;
         $arrVariables[':patientId'] = $this->patientId;
-        $arrVariables[':admissionDate'] = $this->admissionDate;
         $arrVariables[':episodeId'] = $this->episodeId;
+        $arrVariables[':operationId'] = $this->operationId;
+        $arrVariables[':operationDate'] = $this->operationDate;
+        $arrVariables[':admissionDate'] = $this->admissionDate;
         $arrVariables[':changed'] = $this->changed;
         $arrBlobVariables = null;
         if ($this->recordContentModified) {
@@ -251,8 +315,8 @@ class RecordPool {
 
         $sql = null;
         if ($isNew) {
-            $sql = "INSERT INTO RECORD_POOL (ID_RECORD_POOL, ID_PATIENT, ID_EPISODE, ADMISSION_DATE, CREATION_DATE, LAST_UPDATE, CHANGED $sqlBytesFieldName)
-                    VALUES (:id, :patientId, :episodeId, :admissionDate, :creationDate, :lastUpdate, :changed $sqlBytesInsert)";
+            $sql = "INSERT INTO RECORD_POOL (ID_RECORD_POOL, ID_PATIENT, ID_EPISODE, ID_OPERATION, ADMISSION_DATE, OPERATION_DATE, CREATION_DATE, LAST_UPDATE, CHANGED $sqlBytesFieldName)
+                    VALUES (:id, :patientId, :episodeId, :operationId, :admissionDate, :operationDate, :creationDate, :lastUpdate, :changed $sqlBytesInsert)";
         } elseif (count($this->updateNeeded) > 0 || $this->recordContentModified) {
             $sqlUpdates = [];
             foreach ($this->updateNeeded as $varName => $fieldName) {
@@ -279,6 +343,20 @@ class RecordPool {
     }
 
     /**
+     * Returns the date of the last operation (surgery intervention) imported
+     *
+     * @return string
+     */
+    public function getLastOperationDate() {
+        $sql = 'SELECT MAX(OPERATION_DATE) FROM RECORD_POOL';
+        $rst = Database::getInstance()->ExecuteQuery($sql);
+        while ($rst->Next()) {
+            return $rst->GetField('OPERATION_DATE');
+        }
+        return null;
+    }
+
+    /**
      *
      * @param stdClass $recordContent
      */
@@ -298,24 +376,32 @@ class RecordPool {
     }
 
     /**
+     * Returns an array of RecordPool objects grouped by episode.
+     * The return value is a 2 dimensional associative array. The first dimension contains an item per patient/episode, and the 2nd dimension is the
+     * list of operations of each episode
      *
      * @param int $pageSize Number of records to return
      * @param int $pageNum Returns records of this page (base 1)
-     * @return RecordPool[]
+     * @return RecordPool[][]
      */
-    public function loadChanged($pageSize, $pageNum) {
+    static public function loadChanged($pageSize, $pageNum) {
         $records = [];
         $startOffset = max($pageNum - 1, 0) * $pageSize + 1;
         $endOffset = $startOffset + $pageSize;
 
         $arrVariables[':startOffset'] = $startOffset;
         $arrVariables[':endOffset'] = $endOffset;
-        $sql = 'SELECT * FROM (
-                	SELECT rp.*,ROW_NUMBER() OVER(ORDER BY LAST_UPDATE,ID_RECORD_POOL) RN FROM RECORD_POOL rp WHERE CHANGED=1 ORDER BY ID_PATIENT,ADMISSION_DATE ASC 
-                ) WHERE RN >=:startOffset AND RN<:endOffset';
+        $sql = 'SELECT * FROM RECORD_POOL rp2 WHERE (ID_PATIENT,ID_EPISODE) IN (
+                	SELECT ID_PATIENT,ID_EPISODE FROM (
+                		SELECT rp.ID_PATIENT,rp.ID_EPISODE,ROW_NUMBER() OVER(ORDER BY ID_PATIENT,ID_EPISODE) RN FROM RECORD_POOL rp WHERE CHANGED=1 GROUP BY rp.ID_PATIENT,rp.ID_EPISODE
+                	) WHERE RN >=:startOffset AND RN<:endOffset
+                ) ORDER BY ID_PATIENT,ID_EPISODE,OPERATION_DATE';
         $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
         while ($rst->Next()) {
-            $records[] = self::loadDBRecord($rst);
+            $patientId = $rst->GetField('ID_PATIENT');
+            $episodeId = $rst->GetField('ID_EPISODE');
+            // Group all operations of an Episode
+            $records[$patientId . '|' . $episodeId][] = self::loadDBRecord($rst);
         }
         return $records;
     }

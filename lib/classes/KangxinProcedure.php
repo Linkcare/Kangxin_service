@@ -2,11 +2,13 @@
 
 class KangxinProcedure {
     /** @var string*/
-    private $order;
+    private $applyOperatNo;
     /** @var string*/
-    private $orderDate;
+    private $processOrder;
     /** @var string*/
     private $operationCode;
+    /** @var string*/
+    private $operationDoctor;
     /** @var string*/
     private $operationName;
     /** @var string*/
@@ -22,9 +24,11 @@ class KangxinProcedure {
     /** @var string*/
     private $operationLevel;
     /** @var string*/
-    private $operationSurgeon;
-    /** @var string*/
     private $operationType;
+
+    public function __construct($operationId = null) {
+        $this->applyOperatNo = $operationId;
+    }
 
     /**
      * ******* GETTERS *******
@@ -34,16 +38,16 @@ class KangxinProcedure {
      *
      * @return string
      */
-    public function getOrder() {
-        return $this->order;
+    public function getApplyOperatNo() {
+        return $this->applyOperatNo;
     }
 
     /**
      *
      * @return string
      */
-    public function getOrderDate() {
-        return $this->orderDate;
+    public function getProcessOrder() {
+        return $this->processOrder;
     }
 
     /**
@@ -52,6 +56,27 @@ class KangxinProcedure {
      */
     public function getOperationCode() {
         return $this->operationCode;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getOperationDoctor() {
+        return $this->operationDoctor;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getOperationDoctorCode() {
+        $parts = explode('/', $this->operationDoctor);
+        if (count($parts) > 1) {
+            return $parts[1];
+        }
+
+        return null;
     }
 
     /**
@@ -114,14 +139,6 @@ class KangxinProcedure {
      *
      * @return string
      */
-    public function getOperationSurgeon() {
-        return $this->operationSurgeon;
-    }
-
-    /**
-     *
-     * @return string
-     */
     public function getOperationType() {
         return $this->operationType;
     }
@@ -134,16 +151,16 @@ class KangxinProcedure {
      *
      * @param string $value
      */
-    public function setOrder($value) {
-        $this->order = trim($value);
+    public function setApplyOperatNo($value) {
+        $this->applyOperatNo = trim($value);
     }
 
     /**
      *
      * @param string $value
      */
-    public function setOrderDate($value) {
-        $this->orderDate = trim($value);
+    public function setProcessOrder($value) {
+        $this->processOrder = trim($value);
     }
 
     /**
@@ -152,6 +169,14 @@ class KangxinProcedure {
      */
     public function setOperationCode($value) {
         $this->operationCode = trim($value);
+    }
+
+    /**
+     *
+     * @param string $value
+     */
+    public function setOperationDoctor($value) {
+        $this->operationDoctor = trim($value);
     }
 
     /**
@@ -200,14 +225,6 @@ class KangxinProcedure {
      */
     public function setOperationDate($value) {
         $this->operationDate = trim($value);
-    }
-
-    /**
-     *
-     * @param string $value
-     */
-    public function setOperationSurgeon($value) {
-        $this->operationSurgeon = trim($value);
     }
 
     /**

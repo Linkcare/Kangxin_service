@@ -28,12 +28,13 @@ class Database {
      * @param string $user
      * @param string $password
      */
-    static public function connect($server, $databaseName, $user, $password) {
+    static public function connect($server, $databaseName, $user, $password, $asSysDba = false) {
         $db = new DbManagerOracle();
         $db->setHost($server);
         $db->setUser($user);
         $db->SetPasswd($password);
         $db->SetDatabase($databaseName);
+        $db->connectAsSysDba($asSysDba);
         $db->ConnectServer(false);
         self::$backend = $db;
     }

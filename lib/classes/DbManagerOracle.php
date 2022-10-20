@@ -27,17 +27,24 @@ class DbManagerOracle extends DbManager {
         $this->pdo = $pdo;
         $MAX_intentos = 5;
         $intentos = 0;
+        $sessionMode = $this->asSysDba ? OCI_SYSDBA : null;
         while ($this->conn == null && $intentos < $MAX_intentos) {
+            $error = null;
             try {
                 // by default use OCI8 connection
                 if ($this->pdo) {
                     $this->conn = new PDO("oci:dbname=//" . $this->Host . "/" . $this->Database . ";charset=AL32UTF8", $this->User, $this->Passwd);
                 } else {
                     if ($persistant) {
-                        $this->conn = oci_pconnect($this->User, $this->Passwd, $this->Host . ':' . $this->Port . '/' . $this->Database, 'AL32UTF8');
+                        $this->conn = oci_pconnect($this->User, $this->Passwd, $this->Host . ':' . $this->Port . '/' . $this->Database, 'AL32UTF8',
+                                $sessionMode);
                     } else {
-                        $this->conn = oci_connect($this->User, $this->Passwd, $this->Host . ':' . $this->Port . '/' . $this->Database, 'AL32UTF8');
+                        $this->conn = oci_connect($this->User, $this->Passwd, $this->Host . ':' . $this->Port . '/' . $this->Database, 'AL32UTF8',
+                                $sessionMode);
                     }
+                }
+                if (!$this->conn) {
+                    $error = oci_error();
                 }
                 $intentos++;
             } catch (PDOException $e) {
@@ -487,6 +494,9 @@ class DbManagerOracle extends DbManager {
     }
 
     private function removeUnusedVariables($query, &$arrVariables) {
+        if ($arrVariables === null) {
+            return;
+        }
         $names = array_keys($arrVariables);
         foreach ($names as $varName) {
             if (!preg_match('~' . $varName . '([^\w]|$)~', $query)) {

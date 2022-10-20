@@ -58,6 +58,7 @@ class APIQuestion {
     private $dataCode;
     private $type;
     private $value;
+    private $optionId; // For multianswer questions (OPTIONS / CHECKS)
     private $valueDescription;
     /** @var APIQuestionOption[] */
     private $options;
@@ -105,6 +106,7 @@ class APIQuestion {
     public function __clone() {
         $this->id = null;
         $this->value = null;
+        $this->optionId = null;
         $this->valueDescription = null;
         if (!empty($this->options)) {
             $this->options = array_map(function ($o) {
@@ -251,11 +253,38 @@ class APIQuestion {
     }
 
     /**
+     * Gets the answer of the question.
+     * When it is a multiptions question, the value returned is the ID of the selected option.
+     * Alternatively you can use the 2 following functions to request specifically whether you want to get the value or the optionId:
+     * <ul>
+     * <li>getValue()</li>
+     * <li>getOptionId()</li>
+     * </ul>
+     *
+     * @return string
+     */
+    public function getAnswer() {
+        if (in_array($this->getType(), self::OPTIONS_TYPES)) {
+            return $this->optionId;
+        } else {
+            return $this->value;
+        }
+    }
+
+    /**
      *
      * @return string
      */
     public function getValue() {
         return $this->value;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getOptionId() {
+        return $this->optionId;
     }
 
     /**
@@ -299,12 +328,40 @@ class APIQuestion {
     }
 
     /**
+     * Sets the answer of the question.
+     * When it is a multiptions question, the value expected should be the ID of the selected option.
+     * Alternatively you can use the 2 following functions to indicate specifically whether you want to set the value or the optionId:
+     * <ul>
+     * <li>setValue()</li>
+     * <li>setOptionId()</li>
+     * </ul>
+     *
+     * @param string $value
+     */
+    public function setAnswer($value) {
+        if (in_array($this->getType(), self::OPTIONS_TYPES)) {
+            $this->optionId = $value;
+        } else {
+            $this->value = $value;
+        }
+    }
+
+    /**
      * Sets the value of the question
      *
      * @param string $value
      */
     public function setValue($value) {
         $this->value = $value;
+    }
+
+    /**
+     * Sets the Id of the option selected in a multioptions question
+     *
+     * @param string $value
+     */
+    public function setOptionId($optionId) {
+        $this->optionId = $optionId;
     }
 
     /**
@@ -342,8 +399,8 @@ class APIQuestion {
             $xml->createChildNode($parentNode, "question_id", $this->getId());
         }
         if (in_array($this->getType(), self::OPTIONS_TYPES)) {
-            $xml->createChildNode($parentNode, "value", '');
-            $xml->createChildNode($parentNode, "option_id", $this->getValue());
+            $xml->createChildNode($parentNode, "value", $this->getValue());
+            $xml->createChildNode($parentNode, "option_id", $this->getOptionId());
         } elseif ($this->getType() == self::TYPE_CODE) {
             $valObj = new stdClass();
             $valObj->code = $this->getValue();
