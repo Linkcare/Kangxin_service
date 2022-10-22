@@ -407,13 +407,13 @@ class RecordPool {
     }
 
     /**
-     * Returns the total number of records with changes
+     * Returns the total number of episodes with changes
      *
      * @return number
      */
     static public function countTotalChanged() {
         $total = 0;
-        $sql = 'SELECT COUNT(ID_RECORD_POOL) AS TOTAL FROM RECORD_POOL WHERE CHANGED=1';
+        $sql = 'SELECT COUNT(DISTINCT ID_EPISODE) AS TOTAL FROM RECORD_POOL WHERE CHANGED=1';
         $rst = Database::getInstance()->ExecuteQuery($sql);
         if ($rst->Next()) {
             $total = $rst->GetField('TOTAL');
