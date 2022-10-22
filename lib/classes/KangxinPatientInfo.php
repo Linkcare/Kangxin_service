@@ -67,6 +67,8 @@ class KangxinPatientInfo {
     /** @var string*/
     private $applyOperatNo;
     /** @var string*/
+    private $operationDate;
+    /** @var string*/
     private $processOrder;
     /** @var string*/
     private $updateTime;
@@ -444,12 +446,21 @@ class KangxinPatientInfo {
     }
 
     /**
-     * Application No.
+     * Identifier of the operation.
      *
      * @return string
      */
     public function getApplyOperatNo() {
         return $this->applyOperatNo;
+    }
+
+    /**
+     * Date of the operation
+     *
+     * @return string
+     */
+    public function getOperationDate() {
+        return $this->operationDate;
     }
 
     /**
@@ -802,12 +813,21 @@ class KangxinPatientInfo {
     }
 
     /**
-     * Application No.
+     * Id of the operation
      *
      * @param string $value
      */
     public function setApplyOperatno($value) {
         $this->applyOperatNo = $value;
+    }
+
+    /**
+     * Operation date
+     *
+     * @param string $value
+     */
+    public function setOperationDate($value) {
+        $this->operationDate = $value;
     }
 
     /**

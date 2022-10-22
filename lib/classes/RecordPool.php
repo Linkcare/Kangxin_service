@@ -348,10 +348,10 @@ class RecordPool {
      * @return string
      */
     public function getLastOperationDate() {
-        $sql = 'SELECT MAX(OPERATION_DATE) FROM RECORD_POOL';
+        $sql = 'SELECT MAX(OPERATION_DATE) AS LAST_DATE FROM RECORD_POOL';
         $rst = Database::getInstance()->ExecuteQuery($sql);
         while ($rst->Next()) {
-            return $rst->GetField('OPERATION_DATE');
+            return $rst->GetField('LAST_DATE');
         }
         return null;
     }

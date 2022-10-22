@@ -6,15 +6,11 @@ session_start();
  * To override the default values defined below, create a file named conf/configuration.php in the service root directory and replace the value of the
  * desired variables by a custom value
  */
-$GLOBALS['LANG'] = 'EN';
-$GLOBALS['DEFAULT_TIMEZONE'] = 'Asia/Shanghai';
-/* Log level. Possible values: debug,trace,warning,error,none */
-$GLOBALS['LOG_LEVEL'] = 'error';
-/* Directory to store logs in disk. If null, logs will only be generated on stdout */
-$GLOBALS['LOG_DIR'] = null;
-
+/**
+ * ** REQUIRED CONFIGURATION PARAMETERS ***
+ */
 /* Url of the Linkcare API */
-$GLOBALS['WS_LINK'] = 'https://dev-api.linkcareapp.com/ServerWSDL.php';
+$GLOBALS['WS_LINK'] = 'https://api.linkcareapp.com/ServerWSDL.php';
 
 /* Credentials of the SERVICE USER that will connect to the Linkare platform and import the patients */
 $GLOBALS['SERVICE_USER'] = 'service';
@@ -22,26 +18,29 @@ $GLOBALS['SERVICE_PASSWORD'] = 'password';
 $GLOBALS['SERVICE_TEAM'] = 'LINKCARE';
 
 /* Endpoint URL of the Kangxin API */
-$GLOBALS['KANGXIN_API_URL'] = 'http://kangxin_api';
-$GLOBALS['KANGXIN_API_TIMEOUT'] = 300;
-
-/*
- * Maximum number of patients that should be imported to the Linkcare platform in one execution. 0 means no limit (continue while there are records to
- * process)
- */
-$GLOBALS['PATIENT_MAX'] = 0;
-/* Number of patients that will be requested to the Kangxin API in each request */
-$GLOBALS['PATIENT_PAGE_SIZE'] = 50;
+$GLOBALS['KANGXIN_API_URL'] = 'http://183.230.182.185:6050/dmp/phm';
 
 /* Program and Team codes of the Subscription where the admissions of the patients will be created */
 $GLOBALS['PROGRAM_CODE'] = 'KANGXIN_ADMISSIONS';
 $GLOBALS['TEAM_CODE'] = 'xxxxx';
-$GLOBALS['DATE_THRESHOLD'] = '2022-10-01';
+/*
+ * Date of the oldest procedure that will be requested to the Kangxin API. This value normally is only used during
+ * the first load, because once the DB is feeded with an initial number of records, tha date of the last record will be
+ * used in further requests to the Kangxin API to receive only incremental updates
+ */
+$GLOBALS['MINIMUM_DATE'] = '2022-10-01';
+
+/*
+ * Threshold date to discharge the Admission in the Linkcare platform. All records received with a date of discharge (in the Kangxin Hospital) older
+ * that the specified in this parameter will be automatically discharged in the Linkcare platform
+ */
+$GLOBALS['DISCHARGE_DATE_THRESHOLD'] = '2022-10-01';
+
 /*
  * The Patient Identifier is not globally unique. It is only unique in a particular Hospital.
  * The following configuration variable defines the Team for which the Patient Identifier (the Kangxin Hospital Team)
  */
-$GLOBALS['PATIENT_IDENTIFIER_TEAM'] = 'xxx';
+$GLOBALS['PATIENT_IDENTIFIER_TEAM'] = 'KANGXIN';
 
 /*
  * Database credentials
@@ -51,12 +50,40 @@ $GLOBALS['INTEGRATION_DATABASE'] = 'linkcare';
 $GLOBALS['INTEGRATION_DBSERVER'] = 'xxx.linkcareapp.com';
 $GLOBALS['INTEGRATION_DBUSER'] = 'KANGXIN_INTEGRATION';
 $GLOBALS['INTEGRATION_DBPASSWORD'] = 'yyy';
-// DB Credentials of a user with administrative privileges for creating schemas and tables
+/*
+ * DB Credentials of a user with administrative privileges for creating schemas and tables.
+ * This credentials are necessary only for the initial deploy of the service, and can be removed later.
+ */
 $GLOBALS['ADMIN_DBUSER'] = '';
 $GLOBALS['ADMIN_DBPASSWORD'] = '';
 
-// Time between requests to the KANGXIN API to avoid blocking the server
+/**
+ * ** OPTIONAL CONFIGURATION PARAMETERS ***
+ */
+/* Default timezone used by the service. It is used when it is necessary to generate dates in a specific timezone */
+$GLOBALS['DEFAULT_TIMEZONE'] = 'Asia/Shanghai';
+/* Log level. Possible values: debug,trace,warning,error,none */
+$GLOBALS['LOG_LEVEL'] = 'error';
+/* Directory to store logs in disk. If null, logs will only be generated on stdout */
+$GLOBALS['LOG_DIR'] = null;
+/*
+ * Maximum number of patients that should be imported to the Linkcare platform in one execution. 0 means no limit (continue while there are records to
+ * process)
+ */
+$GLOBALS['PATIENT_MAX'] = 10000;
+/* Number of patients process */
+$GLOBALS['PATIENT_PAGE_SIZE'] = 50;
+
+/* Maximum time (in seconds) to wait for a response of the Kangxin API to consider that it is not responding and cancel the request */
+$GLOBALS['KANGXIN_API_TIMEOUT'] = 300;
+/* Time (in seconds) between successive requests to the Kangxin API to avoid blocking the server */
 $GLOBALS['KANGXIN_REQUEST_DELAY'] = 5;
+
+/*
+ * The Kangxin API allows to fetch records based on its update time or operation time.
+ * This parameter allows to configure how records should be requested
+ */
+$GLOBALS['USE_UPDATE_TIME_FILTER'] = true;
 
 /* LOAD CUSTOMIZED CONFIGURATION */
 if (file_exists(__DIR__ . '/../conf/configuration.php')) {

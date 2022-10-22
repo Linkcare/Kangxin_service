@@ -3,7 +3,6 @@
 class KangxinAPI {
     private static $instance;
     private $endpoint;
-    private $totalExpected = 0;
     private $timeout = 30;
     /** @var int */
     private $delay;
@@ -31,31 +30,23 @@ class KangxinAPI {
     /**
      * Invokes the Kangxin API to retrieve a list of patients that should be imported in the Linkcare platform
      *
-     * @param stdClass $obj
+     * @param string $fromDate
+     * @param boolean $isFirstLoad
      * @throws ServiceException
      * @return KangxinPatientInfo[]
      */
-    public function requestPatientList($pageSize, $pageNum, $operationTime, $updateTime = null) {
+    public function requestPatientList($fromDate, $isFirstLoad = false) {
         $waitTime = $this->delay - (microtime(true) - $this->lastRequestTime);
         if ($waitTime > 0) {
             usleep($waitTime * 1000000);
         }
 
+        $filterParameter = $GLOBALS['USE_UPDATE_TIME_FILTER'] ? 'updateTime' : 'operationTime';
         if ($GLOBALS['SIMULATE_KANGXIN_API']) {
-            $resp = $this->simulatedData($pageSize, $pageNum);
+            $resp = $this->simulatedData();
         } else {
-            if (array_key_exists($operationTime, self::$cache)) {
-                $resp = self::$cache[$operationTime];
-            } else {
-                $params['operationTime'] = $operationTime;
-                // $params['updateTime'] = $updateTime;
-                $resp = $this->invokeAPI('healthData/syncOpInfos', $params, false);
-                self::$cache[$operationTime] = $resp;
-            }
-            if (is_array($resp)) {
-                $this->totalExpected = count($resp);
-                $resp = array_slice($resp, ($pageNum - 1) * $pageSize, $pageSize);
-            }
+            $params[$filterParameter] = $fromDate;
+            $resp = $this->invokeAPI('healthData/syncOpInfos', $params, false);
         }
 
         $this->lastRequestTime = microtime(true);
@@ -64,28 +55,47 @@ class KangxinAPI {
             throw new ServiceException(ErrorCodes::API_INVALID_DATA_FORMAT, 'healthData/opernInfos function should return an array as response');
         }
 
-        $patients = [];
+        $operations = [];
+        $minAdmissionDate = null;
+        $episodesFound = [];
+        $operationsFound = [];
         foreach ($resp as $info) {
-            $patients[] = KangxinPatientInfo::fromJson($info);
+            $op = KangxinPatientInfo::fromJson($info);
+            $operations[] = $op;
+            if (!$minAdmissionDate || $op->getAdmissionTime() < $minAdmissionDate) {
+                $minAdmissionDate = $op->getAdmissionTime();
+            }
+            $episodesFound[] = $op->getResidenceNo();
+            $operationsFound[] = $op->getApplyOperatNo();
         }
 
-        return $patients;
-    }
-
-    /**
-     * Return the total number of expected records
-     *
-     * @return number
-     */
-    public function countTotalExpected() {
-        if (!$this->totalExpected) {
+        if (!$GLOBALS['SIMULATE_KANGXIN_API'] && $isFirstLoad && $minAdmissionDate) {
             /*
-             * Invoke the API to get the total number of records expected.
-             * This value is refreshed each time the API is invoked
+             * This is a special action that will only be executed the first time that we request records.
+             * The API functions returns individual operations of an episode. For this reason, when fetching records for the first time, some episodes
+             * may end up with an incomplete number of operations.
+             * The reason is that we request individual operations from a certain date, but it may happen that a patient had a previous operation in
+             * the same episode, and then we would not be receiving it.
+             * We are going to ensure that we have all the information aobut the episodes
              */
-            $this->requestPatientList(1, 10000000, '2022-01-01');
+            $params[$filterParameter] = $minAdmissionDate;
+            $resp = $this->invokeAPI('healthData/syncOpInfos', $params, false);
+            if (is_array($resp)) {
+                foreach ($resp as $info) {
+                    $op = KangxinPatientInfo::fromJson($info);
+                    if (!$op || !in_array($op->getResidenceNo(), $episodesFound) || in_array($op->getApplyOperatNo(), $operationsFound)) {
+                        // Not an operation of an episode that should be included in the response, or an already loaded operation
+                        continue;
+                    }
+                    if ($op->getOperationDate() < $fromDate) {
+                        // This is an operation that happened before the threshold date but corresponds to an episode in the response set
+                        $operations[] = $op;
+                    }
+                }
+            }
         }
-        return $this->totalExpected;
+
+        return $operations;
     }
 
     /**
@@ -2075,9 +2085,6 @@ class KangxinAPI {
         }';
 
         $resp = json_decode($simulated);
-        $records = array_slice($resp->result, ($pageNum - 1) * $pageSize, $pageSize);
-        $this->totalExpected = count($records);
-
-        return $records;
+        return $resp->result;
     }
 }

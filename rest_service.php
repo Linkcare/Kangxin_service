@@ -47,9 +47,8 @@ if ($connectionSuccessful) {
                 break;
             case 'fetch_kangxin_records' :
                 $logger->trace('IMPORTING PATIENT RECORDS FROM KANGXIN');
-                $fromRecord = $_GET['from'];
                 $service = new ServiceFunctions(LinkcareSoapAPI::getInstance(), KangxinAPI::getInstance());
-                $serviceResponse = $service->fetchKangxinRecords($processHistory, $fromRecord);
+                $serviceResponse = $service->fetchKangxinRecords($processHistory);
                 break;
             default :
                 $serviceResponse->setCode(ServiceResponse::ERROR);
