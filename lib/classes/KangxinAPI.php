@@ -199,7 +199,7 @@ class KangxinAPI {
      *
      * @return KangxinPatientInfo[]
      */
-    private function simulatedData($pageSize, $pageNum) {
+    private function simulatedData() {
         $simulated = '{
           "code": 0,
           "msg": "成功",

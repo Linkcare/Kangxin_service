@@ -31,6 +31,7 @@ try {
     $serviceResponse->setCode(ServiceResponse::ERROR);
     $serviceResponse->setMessage('Error initializing service: ' . $e->getMessage());
     $logger->error($serviceResponse->getMessage());
+    echo $serviceResponse->toString();
     exit(1);
 }
 

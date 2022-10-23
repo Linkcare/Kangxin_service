@@ -46,7 +46,7 @@ class ServiceFunctions {
 
         $fromDate = RecordPool::getLastOperationDate();
         $isFirstLoad = isNullOrEmpty($fromDate);
-        if ($fromDate) {
+        if (!$fromDate) {
             /*
              * The DB is empty, so this is the first time we are fetching records from Kangxin.
              * We will use the preconfigured minimum date.
@@ -149,8 +149,12 @@ class ServiceFunctions {
         $totalExpectedRecords = RecordPool::countTotalChanged();
         ServiceLogger::getInstance()->debug('Process a maximum of: ' . $maxRecords . ' records');
         while ($processed < $maxRecords) {
-            // Retrieve the list of episodes received from Kangxin marked as "changed"
-            $changedRecords = RecordPool::loadChanged($pageSize, $page);
+            /*
+             * Retrieve the list of episodes received from Kangxin marked as "changed"
+             * We always request for page 1 because as long as we process each page, the processed records are marked as "not changed", so when we do
+             * the next request, the rest of records have shifted to the first page
+             */
+            $changedRecords = RecordPool::loadChanged($pageSize, 1);
 
             ServiceLogger::getInstance()->debug("Records requested: $pageSize (page $page), received: " . count($changedRecords));
             $page++;
