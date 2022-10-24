@@ -310,7 +310,10 @@ class ServiceFunctions {
             // Check if the Admission already exists
             $admission = $this->findAdmission($patient, $kangxinRecord, $subscription);
             if (!$admission) {
+                ServiceLogger::getInstance()->debug('Creating new Admission for patient', 2);
                 $admission = $this->createAdmission($patient, $kangxinRecord, $subscription);
+            } else {
+                ServiceLogger::getInstance()->debug('Using existing Admission for patient', 2);
             }
             $this->updateEpisodeData($admission, $kangxinRecord);
             // Discharge the Admission if necessary
@@ -321,7 +324,7 @@ class ServiceFunctions {
                 } elseif ($admission->getStatus() == APIAdmission::STATUS_DISCHARGED &&
                         $admission->getDischargeDate() != $kangxinRecord->getDischargeTime()) {
                     // The ADMISSION was discharged, but the date has changed
-                    $admission->setDischargeDate();
+                    $admission->setDischargeDate($kangxinRecord->getDischargeTime());
                     $admission->save();
                 }
             }
@@ -339,7 +342,7 @@ class ServiceFunctions {
             $errCode = ErrorCodes::UNEXPECTED_ERROR;
         }
         if ($errMsg) {
-            $errMsg = 'ERROR CREATING/UPDATING ADMISSION FOR PATIENT ' . $kangxinRecord->getName() . '(' . $kangxinRecord->getIdentityNumber() . '): ' .
+            $errMsg = 'ERROR CREATING/UPDATING ADMISSION FOR PATIENT ' . $kangxinRecord->getName() . '(' . $kangxinRecord->getIdCard() . '): ' .
                     $errMsg;
             throw new ServiceException($errCode, $errMsg);
         }

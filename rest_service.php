@@ -35,46 +35,62 @@ try {
     exit(1);
 }
 
-$processHistory = new ProcessHistory($action);
-$processHistory->save();
-
 if ($connectionSuccessful) {
-    try {
-        switch ($action) {
-            case 'import_patients' :
-                $logger->trace('CREATION ADMISSIONS IN CARE PLAN');
-                $service = new ServiceFunctions(LinkcareSoapAPI::getInstance(), KangxinAPI::getInstance());
-                $serviceResponse = $service->importPatients($processHistory);
-                break;
-            case 'fetch_kangxin_records' :
-                $logger->trace('IMPORTING PATIENT RECORDS FROM KANGXIN');
-                $service = new ServiceFunctions(LinkcareSoapAPI::getInstance(), KangxinAPI::getInstance());
-                $serviceResponse = $service->fetchKangxinRecords($processHistory);
-                break;
-            default :
-                $serviceResponse->setCode(ServiceResponse::ERROR);
-                $serviceResponse->setMessage('function "' . $action . '" not implemented');
-                break;
+    if ($action == 'fetch_and_import') {
+        // This action name is a shortcut for executing 2 actions sequentially
+        $actionList = ['fetch_kangxin_records', 'import_patients'];
+    } else {
+        $actionList = [$action];
+    }
+
+    foreach ($actionList as $action) {
+        $processHistory = new ProcessHistory($action);
+        $processHistory->save();
+
+        try {
+            switch ($action) {
+                case 'import_patients' :
+                    $logger->trace('CREATION ADMISSIONS IN CARE PLAN');
+                    $service = new ServiceFunctions(LinkcareSoapAPI::getInstance(), KangxinAPI::getInstance());
+                    $serviceResponse = $service->importPatients($processHistory);
+                    break;
+                case 'fetch_kangxin_records' :
+                    $logger->trace('IMPORTING PATIENT RECORDS FROM KANGXIN');
+                    $service = new ServiceFunctions(LinkcareSoapAPI::getInstance(), KangxinAPI::getInstance());
+                    $serviceResponse = $service->fetchKangxinRecords($processHistory);
+                    break;
+                default :
+                    $serviceResponse->setCode(ServiceResponse::ERROR);
+                    $serviceResponse->setMessage('function "' . $action . '" not implemented');
+                    break;
+            }
+        } catch (Exception $e) {
+            $serviceResponse->setCode(ServiceResponse::ERROR);
+            $serviceResponse->setMessage($e->getMessage());
         }
-    } catch (Exception $e) {
-        $serviceResponse->setCode(ServiceResponse::ERROR);
-        $serviceResponse->setMessage($e->getMessage());
+
+        if ($serviceResponse->getCode() == ServiceResponse::ERROR) {
+            $processHistory->setStatus(ProcessHistory::STATUS_FAILURE);
+        } else {
+            $processHistory->setStatus(ProcessHistory::STATUS_SUCCESS);
+        }
+        $processHistory->setOutputMessage($serviceResponse->getMessage());
+        $processHistory->save();
+
+        if ($serviceResponse->getCode() == ServiceResponse::ERROR) {
+            break;
+        }
     }
 }
 
 if ($serviceResponse->getCode() == ServiceResponse::ERROR) {
-    $processHistory->setStatus(ProcessHistory::STATUS_FAILURE);
     $logger->error($serviceResponse->getMessage());
 } else {
-    $processHistory->setStatus(ProcessHistory::STATUS_SUCCESS);
     $logger->trace($serviceResponse->getMessage());
     $details = $processHistory->getLogs();
     foreach ($details as $msg) {
         $logger->error($msg->getMessage(), 2);
     }
 }
-$processHistory->setOutputMessage($serviceResponse->getMessage());
-$processHistory->setEndDate(currentDate());
-$processHistory->save();
 
 echo $serviceResponse->toString();
