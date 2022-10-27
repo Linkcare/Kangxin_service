@@ -16,7 +16,7 @@
  * @throws Exception
  * @return LinkcareSoapAPI
  */
-function apiConnect($token, $user = null, $password = null, $role = null, $team = null, $reuseExistingSession = false) {
+function apiConnect($token, $user = null, $password = null, $role = null, $team = null, $reuseExistingSession = false, $language = null) {
     $timezone = "0";
     $session = null;
 
@@ -25,7 +25,7 @@ function apiConnect($token, $user = null, $password = null, $role = null, $team 
         if ($token) {
             LinkcareSoapAPI::session_join($token, $timezone);
         } else {
-            LinkcareSoapAPI::session_init($user, $password, 0, $reuseExistingSession);
+            LinkcareSoapAPI::session_init($user, $password, 0, $reuseExistingSession, $language);
         }
 
         $session = LinkcareSoapAPI::getInstance()->getSession();
@@ -35,6 +35,9 @@ function apiConnect($token, $user = null, $password = null, $role = null, $team 
         }
         if ($role && $session->getRoleId() != $role) {
             LinkcareSoapAPI::getInstance()->session_role($role);
+        }
+        if ($language && $session->getLanguage() != $language) {
+            LinkcareSoapAPI::getInstance()->session_set_language($language);
         }
     } catch (APIException $e) {
         throw $e;

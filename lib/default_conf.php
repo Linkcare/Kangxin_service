@@ -17,6 +17,9 @@ $GLOBALS['SERVICE_USER'] = 'service';
 $GLOBALS['SERVICE_PASSWORD'] = 'password';
 $GLOBALS['SERVICE_TEAM'] = 'LINKCARE';
 
+/* Language of the "service" user. This will be the default language of new patients created by the service */
+$GLOBALS['LANGUAGE'] = 'ZH';
+
 /* Endpoint URL of the Kangxin API */
 $GLOBALS['KANGXIN_API_URL'] = 'http://183.230.182.185:6050/dmp/phm';
 

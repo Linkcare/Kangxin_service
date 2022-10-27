@@ -803,6 +803,7 @@ class ServiceFunctions {
             $time = $dateParts[1];
             $episodeTask->setDate($date);
             $episodeTask->setHour($time);
+            $episodeTask->setLocked(true);
             $episodeTask->save();
         }
     }

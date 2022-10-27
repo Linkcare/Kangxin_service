@@ -84,9 +84,10 @@ class LinkcareSoapAPI {
      * @param number|string $timezone
      * @param boolean $reuseExistingSession If true and a previous (non expired) session exists, then a new session will not be created, and the token
      *        of the previous session will be used
+     * @param string $language 2-letter ISO language code
      * @throws APIException
      */
-    static public function session_init($user, $password, $timezone = 0, $reuseExistingSession = false) {
+    static public function session_init($user, $password, $timezone = 0, $reuseExistingSession = false, $language = null) {
         if (is_numeric($timezone)) {
             $timezone = $timezone <= 0 ? "-" . abs($timezone) : "+" . abs($timezone);
         }
@@ -96,7 +97,7 @@ class LinkcareSoapAPI {
         }
 
         $date = currentDate($timezone);
-        $result = $client->session_init($user, $password, null, null, null, '2.7.26', $reuseExistingSession ? 1 : 0, $date);
+        $result = $client->session_init($user, $password, null, null, $language, '2.7.26', $reuseExistingSession ? 1 : 0, $date);
         if ($result["ErrorCode"]) {
             throw new APIException($result["ErrorCode"], $result["ErrorMsg"]);
         } else {
@@ -137,6 +138,20 @@ class LinkcareSoapAPI {
         $resp = $this->invoke('session_set_team', $params);
         if (!$resp->getErrorCode()) {
             $this->session->setTeamId($teamId);
+        }
+    }
+
+    /**
+     * Sets the active TEAM for the session
+     *
+     * @param string $teamId
+     * @throws APIException
+     */
+    public function session_set_language($language) {
+        $params = ["language" => $language];
+        $resp = $this->invoke('session_set_language', $params);
+        if (!$resp->getErrorCode()) {
+            $this->session->setLanguage($language);
         }
     }
 

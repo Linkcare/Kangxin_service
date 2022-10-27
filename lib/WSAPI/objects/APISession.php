@@ -115,4 +115,13 @@ class APISession {
     public function setRoleId($roleId) {
         $this->roleId = $roleId;
     }
+
+    /**
+     * Changes the active language.
+     *
+     * @param string $language
+     */
+    public function setLanguage($language) {
+        $this->language = $language;
+    }
 }

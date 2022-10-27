@@ -242,6 +242,14 @@ class APITask {
     }
 
     /**
+     *
+     * @param boolean $locked
+     */
+    public function setLocked($locked) {
+        $this->locked = $locked;
+    }
+
+    /**
      * Adds a new assignment to a TASK
      *
      * @param APITaskAssignment $assignment
