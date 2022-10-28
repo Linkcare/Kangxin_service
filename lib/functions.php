@@ -17,15 +17,15 @@
  * @return LinkcareSoapAPI
  */
 function apiConnect($token, $user = null, $password = null, $role = null, $team = null, $reuseExistingSession = false, $language = null) {
-    $timezone = "0";
     $session = null;
+    $timezone = $GLOBALS['DEFAULT_TIMEZONE'];
 
     try {
         LinkcareSoapAPI::setEndpoint($GLOBALS["WS_LINK"]);
         if ($token) {
             LinkcareSoapAPI::session_join($token, $timezone);
         } else {
-            LinkcareSoapAPI::session_init($user, $password, 0, $reuseExistingSession, $language);
+            LinkcareSoapAPI::session_init($user, $password, $timezone, $reuseExistingSession, $language);
         }
 
         $session = LinkcareSoapAPI::getInstance()->getSession();
@@ -38,6 +38,9 @@ function apiConnect($token, $user = null, $password = null, $role = null, $team 
         }
         if ($language && $session->getLanguage() != $language) {
             LinkcareSoapAPI::getInstance()->session_set_language($language);
+        }
+        if ($timezone && $session->getTimezone() != $timezone) {
+            LinkcareSoapAPI::getInstance()->session_set_timezone($timezone);
         }
     } catch (APIException $e) {
         throw $e;

@@ -142,9 +142,9 @@ class LinkcareSoapAPI {
     }
 
     /**
-     * Sets the active TEAM for the session
+     * Sets the active language for the session
      *
-     * @param string $teamId
+     * @param string $language 2-letter ISO Code
      * @throws APIException
      */
     public function session_set_language($language) {
@@ -152,6 +152,20 @@ class LinkcareSoapAPI {
         $resp = $this->invoke('session_set_language', $params);
         if (!$resp->getErrorCode()) {
             $this->session->setLanguage($language);
+        }
+    }
+
+    /**
+     * Sets the timezone for the session
+     *
+     * @param string $timezone Integer time shift respect UTC or region string (e.g. Europe/Madrid')
+     * @throws APIException
+     */
+    public function session_set_timezone($timezone) {
+        $params = ["timezone" => $timezone];
+        $resp = $this->invoke('session_set_timezone', $params);
+        if (!$resp->getErrorCode()) {
+            $this->session->setTimezone($timezone);
         }
     }
 
@@ -740,7 +754,7 @@ class LinkcareSoapAPI {
      *
      * @param SoapClient $client
      * @param string $token
-     * @param int $timezone
+     * @param int|string $timezone
      * @throws APIException
      * @return APISession
      */

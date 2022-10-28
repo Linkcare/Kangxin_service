@@ -29,6 +29,7 @@ class APISession {
                 $session->token = trim($xml->token);
                 $session->userId = trim($xml->user);
                 $session->language = trim($xml->language);
+                $session->timezone = trim($xml->timezone);
                 $session->roleId = intval(trim($xml->role));
                 $session->teamId = trim($xml->team);
                 $session->teamCode = trim($xml->team_code);
@@ -42,6 +43,7 @@ class APISession {
             $session->token = $sessionInfo["token"];
             $session->userId = $sessionInfo["user"];
             $session->language = $sessionInfo["language"];
+            $session->timezone = $sessionInfo["timezone"];
             $session->roleId = $sessionInfo["role"];
             $session->teamId = $sessionInfo["team"];
             $session->teamCode = $sessionInfo["team_code"];
@@ -68,6 +70,10 @@ class APISession {
 
     public function getLanguage() {
         return $this->language;
+    }
+
+    public function getTimezone() {
+        return $this->timezone;
     }
 
     public function getRoleId() {
@@ -123,5 +129,14 @@ class APISession {
      */
     public function setLanguage($language) {
         $this->language = $language;
+    }
+
+    /**
+     * Changes the active timezone.
+     *
+     * @param string $language
+     */
+    public function setTimezone($timezone) {
+        $this->timezone = $timezone;
     }
 }
