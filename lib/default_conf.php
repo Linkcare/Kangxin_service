@@ -88,6 +88,17 @@ $GLOBALS['KANGXIN_REQUEST_DELAY'] = 5;
  */
 $GLOBALS['USE_UPDATE_TIME_FILTER'] = true;
 
+/**
+ * SIMULATION CONFIGURATION PARAMETERS
+ */
+/*
+ * Indicate if the service will use simulated requests to the Kangxin API. If true, instead of calling the real API, fake date will be used (as if it
+ * were returned by the API)
+ */
+$GLOBALS['SIMULATE_KANGXIN_API'] = false;
+/* Parameter to anonymize patient data received from the API */
+$GLOBALS['ANONYMIZE_DATA'] = false;
+
 /* LOAD CUSTOMIZED CONFIGURATION */
 if (file_exists(__DIR__ . '/../conf/configuration.php')) {
     include_once __DIR__ . '/../conf/configuration.php';

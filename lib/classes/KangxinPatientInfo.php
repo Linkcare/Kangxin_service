@@ -277,6 +277,9 @@ class KangxinPatientInfo {
      * @return string
      */
     public function getContactPhone() {
+        if (!startsWith('+', $this->contactPhone)) {
+            return '+86' . $this->contactPhone;
+        }
         return $this->contactPhone;
     }
 

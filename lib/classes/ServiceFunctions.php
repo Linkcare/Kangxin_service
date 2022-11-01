@@ -148,6 +148,11 @@ class ServiceFunctions {
         $success = [];
         $totalExpectedRecords = RecordPool::countTotalChanged();
         ServiceLogger::getInstance()->debug('Process a maximum of: ' . $maxRecords . ' records');
+
+        // Reset import errors from previous executions and try to process again
+        RecordPool::resetErrors();
+
+        // Start process loop
         while ($processed < $maxRecords) {
             /*
              * Retrieve the list of episodes received from Kangxin marked as "changed"

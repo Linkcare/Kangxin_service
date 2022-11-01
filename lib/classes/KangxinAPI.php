@@ -47,6 +47,11 @@ class KangxinAPI {
         } else {
             $params[$filterParameter] = $fromDate;
             $resp = $this->invokeAPI('healthData/syncOpInfos', $params, false);
+            if (is_array($resp) && $GLOBALS['ANONYMIZE_DATA']) {
+                foreach ($resp as $info) {
+                    self::anonymizeOperationData($info);
+                }
+            }
         }
 
         $this->lastRequestTime = microtime(true);
@@ -2086,5 +2091,36 @@ class KangxinAPI {
 
         $resp = json_decode($simulated);
         return $resp->result;
+    }
+
+    /**
+     *
+     * @param stdClass $opInfo
+     */
+    static public function anonymizeOperationData($opInfo) {
+        if (!$opInfo) {
+            return;
+        }
+        if (!empty($opInfo->phone)) {
+            $prefix = '';
+            if (startsWith('+', $opInfo->phone)) {
+                $prefix = substr($opInfo->phone, 0, 3);
+                $phone = substr($opInfo->phone, 3);
+            } else {
+                $phone = $opInfo->phone;
+            }
+            $opInfo->phone = $prefix . '999' . $phone;
+        }
+
+        if (!empty($opInfo->contactPhone)) {
+            $prefix = '';
+            if (startsWith('+', $opInfo->contactPhone)) {
+                $prefix = substr($opInfo->contactPhone, 0, 3);
+                $phone = substr($opInfo->contactPhone, 3);
+            } else {
+                $phone = $opInfo->contactPhone;
+            }
+            $opInfo->contactPhone = $prefix . '999' . $phone;
+        }
     }
 }
