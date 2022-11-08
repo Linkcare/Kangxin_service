@@ -37,7 +37,6 @@ foreach ($serviceNames as $name => $description) {
         $info->duration = (strtotime($endDate) - strtotime($startDate)) . 's';
     } else {
         $info->duration = (strtotime(currentDate()) - strtotime($startDate)) . 's';
-        ;
     }
     $info->message = $processInfo->getOutputMessage();
     foreach ($processInfo->getLogs() as $log) {

@@ -75,6 +75,7 @@ if ($connectionSuccessful) {
             $processHistory->setStatus(ProcessHistory::STATUS_SUCCESS);
         }
         $processHistory->setOutputMessage($serviceResponse->getMessage());
+        $processHistory->setEndDate(currentDate());
         $processHistory->save();
 
         if ($serviceResponse->getCode() == ServiceResponse::ERROR) {

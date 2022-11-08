@@ -208,7 +208,7 @@ class KangxinPatientInfo {
      * @return string
      */
     public function getPhone() {
-        if (!startsWith('+', $this->phone)) {
+        if (!isNullOrEmpty($this->phone) && !startsWith('+', $this->phone)) {
             return '+86' . $this->phone;
         }
         return $this->phone;
@@ -277,7 +277,7 @@ class KangxinPatientInfo {
      * @return string
      */
     public function getContactPhone() {
-        if (!startsWith('+', $this->contactPhone)) {
+        if (!isNullOrEmpty($this->contactPhone) && !startsWith('+', $this->contactPhone)) {
             return '+86' . $this->contactPhone;
         }
         return $this->contactPhone;
