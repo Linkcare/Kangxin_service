@@ -12,8 +12,9 @@ class ServiceFunctions {
     /* Other Constants */
     const PATIENT_HISTORY_TASK_CODE = 'KANGXIN_IMPORT';
     const EPISODE_FORM_CODE = 'KANGXIN_IMPORT_FORM';
-    const EPISODE_ID_ITEM_CODE = 'RESIDENCE_NO';
-    const KANGXIN_ENROL_SELECT = 'KANGXIN_ENROL_SELECT';
+    const KANGXIN_OPERATION_TASK_CODE = 'KANGXIN_OPERATION_DATA';
+    const KANGXIN_OPERATION_FORM_CODE = 'KANGXIN_OPERATION_DATA_FORM';
+    const EPISODE_CHANGE_EVENT_CODE = 'EVENT_EPISODE_UPDATE';
 
     /**
      *
@@ -125,20 +126,35 @@ class ServiceFunctions {
      */
     public function importPatients($processHistory) {
         $serviceResponse = new ServiceResponse(ServiceResponse::IDLE, 'Process started');
+
+        // Verify the existence of the required SUBSCRIPTIONS
         try {
-            $subscription = $this->apiLK->subscription_get($GLOBALS['PROGRAM_CODE'], $GLOBALS['TEAM_CODE']);
+            // Locate the SUBSCRIPTION for storing episode information
+            $kxEpisodesSubscription = $this->apiLK->subscription_get($GLOBALS['KANGXIN_EPISODES_PROGRAM_CODE'], $GLOBALS['TEAM_CODE']);
         } catch (Exception $e) {
             $serviceResponse->setCode(ServiceResponse::ERROR);
             $serviceResponse->setMessage(
-                    'ERROR LOADING SUBSCRIPTION (Program: ' . $GLOBALS['PROGRAM_CODE'] . ', Team: ' . $GLOBALS['TEAM_CODE'] .
+                    'ERROR LOADING SUBSCRIPTION (Program: ' . $GLOBALS['KANGXIN_EPISODES_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['TEAM_CODE'] .
                     ') FOR IMPORTING PATIENTS: ' . $e->getMessage());
             $processHistory->addLog($serviceResponse->getMessage());
             return $serviceResponse;
         }
 
-        $maxRecords = $GLOBALS['PATIENT_MAX'];
-        if ($maxRecords <= 0) {
-            $maxRecords = 10000000;
+        try {
+            // Locate the SUBSCRIPTION of the "Discharge followup" PROGRAM for creating new ADMISSIONS of a patient
+            $dschFollowupSubscription = $this->apiLK->subscription_get($GLOBALS['DISCHARGE_FOLLOWUP_PROGRAM_CODE'], $GLOBALS['TEAM_CODE']);
+        } catch (Exception $e) {
+            $serviceResponse->setCode(ServiceResponse::ERROR);
+            $serviceResponse->setMessage(
+                    'ERROR LOADING SUBSCRIPTION (Program: ' . $GLOBALS['DISCHARGE_FOLLOWUP_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['TEAM_CODE'] .
+                    ') FOR DISCHARGE FOLLOWUP PATIENTS: ' . $e->getMessage());
+            $processHistory->addLog($serviceResponse->getMessage());
+            return $serviceResponse;
+        }
+
+        $MaxEpisodes = $GLOBALS['PATIENT_MAX'];
+        if ($MaxEpisodes <= 0) {
+            $MaxEpisodes = 10000000;
         }
 
         $page = 1;
@@ -146,56 +162,72 @@ class ServiceFunctions {
         $processed = 0;
         $importFailed = [];
         $success = [];
-        $totalExpectedRecords = RecordPool::countTotalChanged();
-        ServiceLogger::getInstance()->debug('Process a maximum of: ' . $maxRecords . ' records');
+        $totalExpectedEpisodes = RecordPool::countTotalChanged();
+        ServiceLogger::getInstance()->debug('Process a maximum of: ' . $MaxEpisodes . ' episodes');
 
         // Reset import errors from previous executions and try to process again
         RecordPool::resetErrors();
 
         // Start process loop
-        while ($processed < $maxRecords) {
+        while ($processed < $MaxEpisodes) {
             /*
              * Retrieve the list of episodes received from Kangxin marked as "changed"
-             * We always request for page 1 because as long as we process each page, the processed records are marked as "not changed", so when we do
-             * the next request, the rest of records have shifted to the first page
+             * We always request for page 1 because as long as we process each page, the processed episodes are marked as "not changed", so when we do
+             * the next request, the rest of episodes have shifted to the first page
              */
-            $changedRecords = RecordPool::loadChanged($pageSize, 1);
+            $changedEpisodes = RecordPool::loadChanged($pageSize, 1);
 
-            ServiceLogger::getInstance()->debug("Records requested: $pageSize (page $page), received: " . count($changedRecords));
+            ServiceLogger::getInstance()->debug("Episodes requested: $pageSize (page $page), received: " . count($changedEpisodes));
             $page++;
-            if (count($changedRecords) < $pageSize) {
-                // We have reached the last page, because we received less records than the requested
-                $maxRecords = $processed + count($changedRecords);
+            if (count($changedEpisodes) < $pageSize) {
+                // We have reached the last page, because we received less episodes than the requested
+                $MaxEpisodes = $processed + count($changedEpisodes);
             }
-            foreach ($changedRecords as $episodeOperations) {
-                usort($episodeOperations,
-                        function ($op1, $op2) {
-                            /* @var KangxinProcedure $op1 */
-                            /* @var KangxinProcedure $op2 */
-                            if ($op1->getOperationDate() > $op2->getOperationDate()) {
-                                return -1;
-                            } elseif ($op1->getOperationDate() < $op2->getOperationDate()) {
-                                return 1;
-                            }
-                            return 0;
-                        });
-                // The first opeartion of the list is the most recent one, so it contains the most updated information
-                /* @var RecordPool $lastOperation */
-                $lastOperation = reset($episodeOperations);
-                /* @var RecordPool[] $otherOperations */
-                $otherOperations = array_slice($episodeOperations, 1); //
-                $patientInfo = KangxinPatientInfo::fromJson($lastOperation->getRecordContent());
-                foreach ($otherOperations as $record) {
-                    // The episode contains more than one operation. Add it to the Patient info
-                    $patientInfo->addOperation($record->getRecordContent());
+            foreach ($changedEpisodes as $episodeOperations) {
+                /** @var RecordPool[] $episodeOperations */
+                /*
+                 * The information received from each clinical episode consists on several records, where each record contains the
+                 * information about one intervention.
+                 * First of all we will create a single Patient object with all the operations of the episode.
+                 * Additionally, whenever we receive updated information about the episode, we want to track the changes received so that we can
+                 * inform the Case Manager about wich things have changed. For that reason, we have a copy of the last information loaded in the PHM
+                 * so that we can compare with the new information.
+                 */
+                $prevKangxinData = array_filter(
+                        array_map(function ($op) {
+                            /** @var RecordPool $op */
+                            return $op->getPrevRecordContent();
+                        }, $episodeOperations));
+
+                $patientInfo = null;
+
+                $kangxinData = array_map(function ($x) {
+                    /** @var RecordPool $x */
+                    return $x->getRecordContent();
+                }, $episodeOperations);
+
+                if (!empty($prevKangxinData)) {
+                    // This clinical episode was been processed before, so first we load the previous information
+                    $patientInfo = KangxinPatientInfo::fromJson($prevKangxinData);
+                    /*
+                     * Now update the information that we already had about the episode with the new information received. This allows to keep track
+                     * of the changes
+                     */
+                    $patientInfo->update($kangxinData);
+                } else {
+                    // This is the first time we receive information about a clinical episode for this patient
+                    $patientInfo = KangxinPatientInfo::fromJson($kangxinData);
                 }
+
                 ServiceLogger::getInstance()->debug(
                         'Importing patient ' . sprintf('%03d', $processed) . ': ' . $patientInfo->getName() . ' (SickId: ' . $patientInfo->getSickId() .
                         ', Id. card: ' . $patientInfo->getIdCard() . ', Episode: ' . $patientInfo->getResidenceNo() . ')', 1);
                 try {
-                    $this->importIntoPHM($patientInfo, $subscription);
+                    $this->importIntoPHM($patientInfo, $kxEpisodesSubscription, $dschFollowupSubscription);
                     $success[] = $patientInfo;
                     foreach ($episodeOperations as $record) {
+                        // Preserve the informat¡on successfully imported so that we can track changes when updated information is received
+                        $record->setPrevRecordContent($record->getRecordContent());
                         $record->setChanged(0);
                     }
                 } catch (Exception $e) {
@@ -210,12 +242,12 @@ class ServiceFunctions {
                 foreach ($episodeOperations as $record) {
                     $record->save();
                 }
-                if ($processed >= $maxRecords) {
+                if ($processed >= $MaxEpisodes) {
                     break;
                 }
             }
 
-            $progress = round(100 * ($totalExpectedRecords ? $processed / $totalExpectedRecords : 1), 1);
+            $progress = round(100 * ($totalExpectedEpisodes ? $processed / $totalExpectedEpisodes : 1), 1);
 
             $outputMessage = "Processed: $processed ($progress%), Success: " . count($success) . ', Failed: ' . count($importFailed);
             // Save progress log
@@ -286,15 +318,17 @@ class ServiceFunctions {
     /**
      * Imports or updates a patient fecthed from Kangxin into the Linkcare Platform
      *
-     * @param KangxinPatientInfo $kangxinRecord
+     * @param KangxinPatientInfo $kxEpisodeInfo
+     * @param APISubscription $kxEpisodeSubscription
+     * @param APISubscription $dschFollowupSubscription
      */
-    private function importIntoPHM($kangxinRecord, $subscription) {
+    private function importIntoPHM($kxEpisodeInfo, $kxEpisodeSubscription, $dschFollowupSubscription) {
         $errMsg = '';
         $errCode = null;
 
         // Create or update the Patient in Linkcare platform
         try {
-            $patient = $this->createPatient($kangxinRecord, $subscription);
+            $patient = $this->createPatient($kxEpisodeInfo);
         } catch (ServiceException $se) {
             $errMsg = 'Import service generated an exception: ' . $se->getMessage();
             $errCode = $se->getCode();
@@ -306,35 +340,66 @@ class ServiceFunctions {
             $errCode = ErrorCodes::UNEXPECTED_ERROR;
         }
         if ($errMsg) {
-            $errMsg = 'ERROR CREATING PATIENT ' . $kangxinRecord->getName() . '(' . $kangxinRecord->getSickId() . '): ' . $errMsg;
+            $errMsg = 'ERROR CREATING PATIENT ' . $kxEpisodeInfo->getName() . '(' . $kxEpisodeInfo->getSickId() . '): ' . $errMsg;
             throw new ServiceException($errCode, $errMsg);
         }
 
         // Create a new Admission for the patient or find the existing one
         try {
-            // Check if the Admission already exists
-            $admission = $this->findAdmission($patient, $kangxinRecord, $subscription);
+            // Check whether the Admission already exists
+            $admission = $this->findAdmission($patient, $kxEpisodeInfo, $kxEpisodeSubscription);
             if (!$admission) {
-                ServiceLogger::getInstance()->debug('Creating new Admission for patient', 2);
-                $admission = $this->createAdmission($patient, $kangxinRecord, $subscription);
+                ServiceLogger::getInstance()->debug('Creating new Admission for patient in Kangxin Admissions PROGRAM', 2);
+                $admission = $this->createEpisodeAdmission($patient, $kxEpisodeInfo, $kxEpisodeSubscription);
+                $isNewEpisode = true;
             } else {
-                ServiceLogger::getInstance()->debug('Using existing Admission for patient', 2);
+                $isNewEpisode = false;
+                ServiceLogger::getInstance()->debug('Using existing Admission for patient in Kangxin Admissions PROGRAM', 2);
             }
-            $this->updateEpisodeData($admission, $kangxinRecord);
-            // Discharge the Admission if necessary
-            if ($kangxinRecord->getDischargeTime()) {
-                if ($admission->getStatus() != APIAdmission::STATUS_DISCHARGED &&
-                        $kangxinRecord->getDischargeTime() < $GLOBALS['DISCHARGE_DATE_THRESHOLD']) {
-                    $admission->discharge(null, $kangxinRecord->getDischargeTime());
+            $episodeInfoForm = $this->updateEpisodeData($admission, $kxEpisodeInfo);
+            $this->updateOperationTasks($admission, $kxEpisodeInfo);
+            if ($kxEpisodeInfo->getDischargeTime()) {
+                // Discharge the Admission if necessary
+                if ($admission->getStatus() != APIAdmission::STATUS_DISCHARGED) {
+                    $admission->discharge(null, $kxEpisodeInfo->getDischargeTime());
                 } elseif ($admission->getStatus() == APIAdmission::STATUS_DISCHARGED &&
-                        $admission->getDischargeDate() != $kangxinRecord->getDischargeTime()) {
+                        $admission->getDischargeDate() != $kxEpisodeInfo->getDischargeTime()) {
                     // The ADMISSION was discharged, but the date has changed
-                    $admission->setDischargeDate($kangxinRecord->getDischargeTime());
+                    $admission->setDischargeDate($kxEpisodeInfo->getDischargeTime());
                     $admission->save();
                 }
             }
-            if ($admission->getStatus() != APIAdmission::STATUS_DISCHARGED) {
-                $this->createSelectionTask($admission);
+
+            $isNewFollowupAdmission = false;
+            $followUpAdmission = null;
+            if (!$kxEpisodeInfo->getDischargeTime() ||
+                    ($GLOBALS['DISCHARGE_DATE_THRESHOLD'] && $kxEpisodeInfo->getDischargeTime() >= $GLOBALS['DISCHARGE_DATE_THRESHOLD'])) {
+                // Create or update an associate ADMISSION in the "DISCHARGE_FOLLOWUP" PROGRAM
+                if ($isNewEpisode) {
+                    /*
+                     * We received a new Episode from Kangxin, so it is necessary to create an associated ADMISSION in the "DISCHARGE_FOLLOWUP"
+                     * PROGRAM
+                     */
+                    $followUpAdmission = $this->createFollowupAdmission($patient, $kxEpisodeInfo, $episodeInfoForm, $dschFollowupSubscription,
+                            $isNewFollowupAdmission);
+                } else {
+                    // Find the Followup ADMISSION that was created for this episode (if any)
+                    $followUpAdmission = $this->findFollowupAdmission($episodeInfoForm, $patient, $dschFollowupSubscription);
+                }
+            }
+
+            // If the new information has any change respect the previous infomation received, create an EVENT to inform the Case Manager
+            if ($GLOBALS['INFORM_EPISODE_CHANGES'] && $followUpAdmission && $kxEpisodeInfo->hasChanges() &&
+                    ($message = $kxEpisodeInfo->generateChangeMessage())) {
+                // The EVENT will be created only the ADMISSION is not new and it is active
+                $followUpAdmissionIsActive = !in_array($followUpAdmission->getStatus(),
+                        [APIAdmission::STATUS_DISCHARGED, APIAdmission::STATUS_REJECTED]);
+                if ($followUpAdmissionIsActive && !$isNewFollowupAdmission) {
+                    $options = new stdClass();
+                    $options->assign_to_role = APITaskAssignment::REFERRAL;
+                    $this->apiLK->event_insert(currentDate($this->apiLK->getSession()->getTimezone()), $patient->getId(), null,
+                            self::EPISODE_CHANGE_EVENT_CODE, null, $followUpAdmission->getId(), $message, $options);
+                }
             }
         } catch (ServiceException $se) {
             $errMsg = 'Import service generated an exception: ' . $se->getMessage();
@@ -347,7 +412,7 @@ class ServiceFunctions {
             $errCode = ErrorCodes::UNEXPECTED_ERROR;
         }
         if ($errMsg) {
-            $errMsg = 'ERROR CREATING/UPDATING ADMISSION FOR PATIENT ' . $kangxinRecord->getName() . '(' . $kangxinRecord->getIdCard() . '): ' .
+            $errMsg = 'ERROR CREATING/UPDATING ADMISSION FOR PATIENT ' . $kxEpisodeInfo->getName() . '(' . $kxEpisodeInfo->getIdCard() . '): ' .
                     $errMsg;
             throw new ServiceException($errCode, $errMsg);
         }
@@ -358,14 +423,24 @@ class ServiceFunctions {
      */
 
     /**
-     * Creates a new patient in Linkcare database using as reference the information in $importInfo
+     * Creates a new patient (or updates it if already exists) in Linkcare database using as reference the information in $importInfo
      *
      * @param KangxinPatientInfo $importInfo
      * @param APISubscription $subscription
      * @return APICase
      */
-    private function createPatient($importInfo, $subscription) {
-        // Create the case
+    private function createPatient($importInfo, $subscription = null) {
+        // Check if there already exists a patient with the Kangxin SickId
+        $searchCondition = new StdClass();
+        $searchCondition->identifier = new StdClass();
+        $searchCondition->identifier->code = $GLOBALS['PATIENT_IDENTIFIER'];
+        $searchCondition->identifier->value = $importInfo->getSickId();
+        $searchCondition->identifier->team = $GLOBALS['PATIENT_IDENTIFIER_TEAM'];
+        $found = $this->apiLK->case_search(json_encode($searchCondition));
+        if (!empty($found)) {
+            $patientId = $found[0]->getId();
+        }
+
         $contactInfo = new APIContact();
 
         if ($importInfo->getName()) {
@@ -390,18 +465,20 @@ class ServiceFunctions {
         }
 
         if ($importInfo->getIdCard() && ($identifierName = self::IdentifierNameFromCardType($importInfo->getIdCardType()))) {
-            ;
             $nationalId = new APIIdentifier($identifierName, $importInfo->getIdCard());
             $contactInfo->addIdentifier($nationalId);
         }
         if ($importInfo->getSickId()) {
-            $patientId = new APIIdentifier($GLOBALS['PATIENT_IDENTIFIER'], $importInfo->getSickId());
-            $patientId->setTeamId($GLOBALS['PATIENT_IDENTIFIER_TEAM']);
-            $contactInfo->addIdentifier($patientId);
+            $sickId = new APIIdentifier($GLOBALS['PATIENT_IDENTIFIER'], $importInfo->getSickId());
+            $sickId->setTeamId($GLOBALS['PATIENT_IDENTIFIER_TEAM']);
+            $contactInfo->addIdentifier($sickId);
         }
 
-        // Create a new CASE with incomplete data (only the KIT_ID)
-        $patientId = $this->apiLK->case_insert($contactInfo, $subscription ? $subscription->getId() : null, true);
+        if ($patientId) {
+            $this->apiLK->case_set_contact($patientId, $contactInfo);
+        } else {
+            $patientId = $this->apiLK->case_insert($contactInfo, $subscription ? $subscription->getId() : null, true);
+        }
         return $this->apiLK->case_get($patientId);
     }
 
@@ -432,12 +509,15 @@ class ServiceFunctions {
         foreach ($episodeList as $episodeTask) {
             $episodeForms = $episodeTask->findForm(self::EPISODE_FORM_CODE);
             foreach ($episodeForms as $form) {
-                $item = $form->findQuestion(self::EPISODE_ID_ITEM_CODE);
+                $item = $form->findQuestion(KangxinItemCodes::RESIDENCE_NO);
                 if ($item->getValue() == $importInfo->getResidenceNo()) {
                     // The episode already exists
                     $foundEpisodeTask = $episodeTask;
                     break;
                 }
+            }
+            if ($foundEpisodeTask) {
+                break;
             }
         }
 
@@ -449,34 +529,142 @@ class ServiceFunctions {
     }
 
     /**
-     * Creates a new Admission for a patient
+     * Creates a new Admission for a patient in the "Kangxin Episodes" PROGRAM
      *
      * @param APICase $case
-     * @param KangxinPatientInfo $importInfo
+     * @param KangxinPatientInfo $episodeInfo
      * @param APISubscription $subscription
      * @return APIAdmission
      */
-    private function createAdmission($case, $importInfo, $subscription) {
+    private function createEpisodeAdmission($case, $episodeInfo, $subscription) {
         $setupParameters = new stdClass();
 
-        $setupParameters->{KangxinItemCodes::SICK_ID} = $importInfo->getSickId();
-        $setupParameters->{KangxinItemCodes::SICK_NUM} = $importInfo->getSickNum();
-        $setupParameters->{KangxinItemCodes::RESIDENCE_NO} = $importInfo->getResidenceNo();
+        $setupParameters->{KangxinItemCodes::SICK_ID} = $episodeInfo->getSickId();
+        $setupParameters->{KangxinItemCodes::SICK_NUM} = $episodeInfo->getSickNum();
+        $setupParameters->{KangxinItemCodes::RESIDENCE_NO} = $episodeInfo->getResidenceNo();
         $setupParameters->{KangxinItemCodes::SOURCE} = 2;
 
-        return $this->apiLK->admission_create($case->getId(), $subscription->getId(), $importInfo->getAdmissionTime(), null, true, $setupParameters);
+        return $this->apiLK->admission_create($case->getId(), $subscription->getId(), $episodeInfo->getAdmissionTime(), null, true, $setupParameters);
+    }
+
+    /**
+     * Creates a new Admission for a patient in the "Kangxin Followup" PROGRAM
+     *
+     * @param APICase $case
+     * @param KangxinPatientInfo $episodeInfo
+     * @param APIForm $episodeInfoForm
+     * @param APISubscription $subscription
+     * @param boolean &$isNew
+     * @return APIAdmission
+     */
+    private function createFollowupAdmission($case, $episodeInfo, $episodeInfoForm, $subscription, &$isNew) {
+        /*
+         * First of all check whether it is really necessary to create a new ADMISSION.
+         * If any ADMISSION exists with a enroll date posterior to the admission date received from Kangxin, then it is not necessary to create a new
+         * one.
+         */
+        $existingAdmissions = $this->apiLK->case_admission_list($case->getId(), true, $subscription->getId());
+        /** @var APIAdmission $found */
+        $found = null;
+        $isNew = true;
+        if (!empty($existingAdmissions)) {
+            // Sort descending by enroll date so that the most recent Admission is the first of the list
+            usort($existingAdmissions,
+                    function ($adm1, $adm2) {
+                        /** @var APIAdmission $adm1 */
+                        /** @var APIAdmission $adm2 */
+                        return strcmp($adm2->getEnrolDate(), $adm1->getEnrolDate());
+                    });
+            $found = reset($existingAdmissions);
+        }
+
+        if ($found) {
+            /*
+             * If there already exists an ADMISSION, maybe it is not necessary to create a new one.
+             * There are 2 situations where it is not necessary to create a new ADMISSION
+             * 1) The last ADMISSION found is active
+             * 2) The last ADMISSION found is not active, but it has an enroll date posterior to the admission date received from Kangxin. This
+             * situation is strange, but it may mean that we are receiving an update of an old record
+             */
+            $isActive = !in_array($found->getStatus(), [APIAdmission::STATUS_DISCHARGED, APIAdmission::STATUS_REJECTED]);
+            if ($isActive || $episodeInfo->getAdmissionTime() < $found->getEnrolDate()) {
+                $isNew = false;
+                $admission = $found;
+            }
+        }
+
+        if (!$admission) {
+            $admission = $this->apiLK->admission_create($case->getId(), $subscription->getId(), null, null, true);
+        }
+
+        if ($episodeInfoForm && $q = $episodeInfoForm->findQuestion(KangxinItemCodes::FOLLOWUP_ADMISSION)) {
+            /*
+             * Update the ID of the Admission created in the FORM where the rest of the information about the episode is stored.
+             */
+            $q->setAnswer($admission->getId());
+            $this->apiLK->form_set_answer($episodeInfoForm->getId(), $q->getId(), $admission->getId());
+        }
+
+        return $admission;
+    }
+
+    /**
+     * Finds the ADMISSION created in the Discharge Followup PROGRAM that is related to a Kangxin clinical episode.
+     * The information about the related ADMISSION is stored in an ITEM of the FORM that holds all the information about the clinical episode
+     *
+     * @param APIForm $episodeInfoForm
+     * @param APICase $case
+     * @param APISubscription $subscription
+     * @return APIAdmission
+     */
+    private function findFollowupAdmission($episodeInfoForm, $case, $subscription) {
+        if (!$episodeInfoForm) {
+            return null;
+        }
+
+        $q = $episodeInfoForm->findQuestion(KangxinItemCodes::FOLLOWUP_ADMISSION);
+        $followupAdmissionId = $q ? $q->getAnswer() : null;
+
+        if ($followupAdmissionId) {
+            try {
+                $followUpAdmission = $this->apiLK->admission_get($followupAdmissionId);
+            } catch (APIException $e) {
+                /*
+                 * If cannot load the associated Follow-up ADMISSION, it may mean that it has been deleted, which shouldn't be a problem.
+                 * If any other case, generate an error
+                 */
+                if ($e->getCode() != "ADMISSION.NOT_FOUND") {
+                    throw $e;
+                }
+            }
+            return $followUpAdmission;
+        }
+
+        /*
+         * We don't have any Admission ID stored in the epsisode info FORM
+         * Try to find an active ADMISSION
+         */
+        $existingAdmissions = $this->apiLK->case_admission_list($case->getId(), true, $subscription->getId());
+        /** @var APIAdmission $found */
+        foreach ($existingAdmissions as $admission) {
+            if (!in_array($admission->getStatus(), [APIAdmission::STATUS_DISCHARGED, APIAdmission::STATUS_REJECTED])) {
+                return $admission;
+            }
+        }
+
+        return null;
     }
 
     /**
      * Updates the information related with a specific episode of the patient.
-     * There exists a TASK with TASK_CODE = XXXXX for each episode
-     */
-    /**
+     * There exists a TASK with TASK_CODE = XXXXX for each episode.<br>
+     * The return value is the APIForm with the information about the episode
      *
      * @param APIAdmission $admission
-     * @param KangxinPatientInfo $importInfo
+     * @param KangxinPatientInfo $kxEpisodeInfo
+     * @return APIForm
      */
-    private function updateEpisodeData($admission, $importInfo) {
+    private function updateEpisodeData($admission, $kxEpisodeInfo) {
         $filter = new TaskFilter();
         $filter->setTaskCodes(self::PATIENT_HISTORY_TASK_CODE);
         $episodeList = $admission->getTaskList(1, 0, $filter);
@@ -491,15 +679,15 @@ class ServiceFunctions {
 
         if (!$episodeTask) {
             /* We need to create a new TASK to store the episode information */
-            $episodeTask = $admission->insertTask(self::PATIENT_HISTORY_TASK_CODE, $importInfo->getAdmissionTime());
+            $episodeTask = $admission->insertTask(self::PATIENT_HISTORY_TASK_CODE, $kxEpisodeInfo->getAdmissionTime());
         }
 
         $episodeForms = $episodeTask->findForm(self::EPISODE_FORM_CODE);
         foreach ($episodeForms as $form) {
-            $item = $form->findQuestion(self::EPISODE_ID_ITEM_CODE);
+            $item = $form->findQuestion(KangxinItemCodes::RESIDENCE_NO);
             if (!$item->getValue()) {
                 $emptyForm = $form;
-            } elseif ($item->getValue() == $importInfo->getResidenceNo()) {
+            } elseif ($item->getValue() == $kxEpisodeInfo->getResidenceNo()) {
                 // The episode already exists
                 $episodeInfoForm = $form;
                 break;
@@ -534,121 +722,121 @@ class ServiceFunctions {
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::LAST_UPDATE)) {
-            $q->setAnswer($importInfo->getUpdateTime());
+            $q->setAnswer($kxEpisodeInfo->getUpdateTime());
             $arrQuestions[] = $q;
         }
 
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::SICK_ID)) {
-            $q->setAnswer($importInfo->getSickId());
+            $q->setAnswer($kxEpisodeInfo->getSickId());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::SICK_NUM)) {
-            $q->setAnswer($importInfo->getSickNum());
+            $q->setAnswer($kxEpisodeInfo->getSickNum());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::ETHNICITY)) {
-            $q->setAnswer($importInfo->getEthnicity());
+            $q->setAnswer($kxEpisodeInfo->getEthnicity());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::ETHNICITY_OPTIONS)) {
             // Select the option by its value
-            $q->setValue($importInfo->getEthnicity());
+            $q->setValue($kxEpisodeInfo->getEthnicity());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::ID_CARD)) {
-            $q->setAnswer($importInfo->getIdCard());
+            $q->setAnswer($kxEpisodeInfo->getIdCard());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::ID_CARD_TYPE)) {
-            $q->setAnswer($importInfo->getIdCardType());
+            $q->setAnswer($kxEpisodeInfo->getIdCardType());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::PHONE)) {
-            $q->setAnswer($importInfo->getPhone());
+            $q->setAnswer($kxEpisodeInfo->getPhone());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::MARITAL)) {
-            $q->setAnswer($importInfo->getMarital());
+            $q->setAnswer($kxEpisodeInfo->getMarital());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::MARITAL_OPTIONS)) {
             // Select the option by its value
-            $q->setValue($importInfo->getMarital());
+            $q->setValue($kxEpisodeInfo->getMarital());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::PATIENT_TYPE)) {
-            $q->setAnswer($importInfo->getKind());
+            $q->setAnswer($kxEpisodeInfo->getKind());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::PROFESSION)) {
-            $q->setAnswer($importInfo->getProfession());
+            $q->setAnswer($kxEpisodeInfo->getProfession());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::PROFESSION_OPTIONS)) {
             // Select the option by its value
-            $q->setValue($importInfo->getProfession());
+            $q->setValue($kxEpisodeInfo->getProfession());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::CONTACT_NAME)) {
-            $q->setAnswer($importInfo->getContactName());
+            $q->setAnswer($kxEpisodeInfo->getContactName());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::RELATION)) {
-            $q->setAnswer($importInfo->getRelation());
+            $q->setAnswer($kxEpisodeInfo->getRelation());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::RELATION_OPTIONS)) {
             // Select the option by its value
-            $q->setValue($importInfo->getRelation());
+            $q->setValue($kxEpisodeInfo->getRelation());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::RELATIONSHIP_CODE)) {
             // Select the option by its value
-            $q->setValue($importInfo->getRelation([$this, 'mapRelationshipCodeValue']));
+            $q->setValue($kxEpisodeInfo->getRelation([$this, 'mapRelationshipCodeValue']));
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::RELATIVE_FAMILY_CODE)) {
-            $q->setAnswer($importInfo->getRelation([$this, 'mapRelativeCodeValue']));
+            $q->setAnswer($kxEpisodeInfo->getRelation([$this, 'mapRelativeCodeValue']));
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::CONTACT_PHONE)) {
-            $q->setAnswer($importInfo->getContactPhone());
+            $q->setAnswer($kxEpisodeInfo->getContactPhone());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::ADMISSION_DIAG)) {
-            $q->setAnswer($importInfo->getAdmissionDiag());
+            $q->setAnswer($kxEpisodeInfo->getAdmissionDiag());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::HOSPITAL_ADMISSION)) {
-            $q->setAnswer($importInfo->getHospitalAdmission());
+            $q->setAnswer($kxEpisodeInfo->getHospitalAdmission());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::DISCHARGE_DIAG)) {
-            $q->setAnswer($importInfo->getDischargeDiag());
+            $q->setAnswer($kxEpisodeInfo->getDischargeDiag());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::DISCHARGE_MAIN_DIAGNOSIS_CODE)) {
-            $q->setAnswer($importInfo->getDischargeDiseaseCode());
+            $q->setAnswer($kxEpisodeInfo->getDischargeDiseaseCode());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::DISCHARGE_MAIN_DIAGNOSIS)) {
-            $q->setAnswer($importInfo->getDischargeMainDiagnosis());
+            $q->setAnswer($kxEpisodeInfo->getDischargeMainDiagnosis());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::DRUG_ALLERGY)) {
-            $q->setAnswer($importInfo->getDrugAllergy());
+            $q->setAnswer($kxEpisodeInfo->getDrugAllergy());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::HOSPITALIZED)) {
-            $q->setAnswer($importInfo->getHospitalized());
+            $q->setAnswer($kxEpisodeInfo->getHospitalized());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::DISCHARGE_SITUATION)) {
-            $q->setAnswer($importInfo->getDischargeSituation());
+            $q->setAnswer($kxEpisodeInfo->getDischargeSituation());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::DISCHARGE_INSTRUCTIONS)) {
-            $q->setAnswer($importInfo->getDischargeInstructions());
+            $q->setAnswer($kxEpisodeInfo->getDischargeInstructions());
             $arrQuestions[] = $q;
         }
         if ($q = $episodeInfoForm->findQuestion(KangxinItemCodes::SOURCE)) {
@@ -661,65 +849,65 @@ class ServiceFunctions {
         if (($arrayHeader = $episodeInfoForm->findQuestion(KangxinItemCodes::ADMISSION_INFO_TABLE)) &&
                 $arrayHeader->getType() == APIQuestion::TYPE_ARRAY) {
             if ($q = $episodeInfoForm->findArrayQuestion($arrayHeader->getId(), $ix, KangxinItemCodes::RESIDENCE_NO)) {
-                $q->setAnswer($importInfo->getResidenceNo());
+                $q->setAnswer($kxEpisodeInfo->getResidenceNo());
                 $arrQuestions[] = $q;
             }
             if ($q = $episodeInfoForm->findArrayQuestion($arrayHeader->getId(), $ix, KangxinItemCodes::VISIT_NUMBER)) {
-                $q->setAnswer($importInfo->getVisitNumber());
+                $q->setAnswer($kxEpisodeInfo->getVisitNumber());
                 $arrQuestions[] = $q;
             }
             if ($q = $episodeInfoForm->findArrayQuestion($arrayHeader->getId(), $ix, KangxinItemCodes::ADMISSION_TIME)) {
-                $q->setAnswer($importInfo->getAdmissionTime());
+                $q->setAnswer($kxEpisodeInfo->getAdmissionTime());
                 $arrQuestions[] = $q;
             }
             if ($q = $episodeInfoForm->findArrayQuestion($arrayHeader->getId(), $ix, KangxinItemCodes::ADMISSION_DEPARTMENT)) {
-                $q->setAnswer($importInfo->getAdmissionDept());
+                $q->setAnswer($kxEpisodeInfo->getAdmissionDept());
                 $arrQuestions[] = $q;
             }
             if ($q = $episodeInfoForm->findArrayQuestion($arrayHeader->getId(), $ix, KangxinItemCodes::DISCHARGE_TIME)) {
-                $q->setAnswer($importInfo->getDischargeTime());
+                $q->setAnswer($kxEpisodeInfo->getDischargeTime());
                 $arrQuestions[] = $q;
             }
             if ($q = $episodeInfoForm->findArrayQuestion($arrayHeader->getId(), $ix, KangxinItemCodes::DISCHARGE_DEPARTMENT)) {
-                $q->setAnswer($importInfo->getDischargeDept());
+                $q->setAnswer($kxEpisodeInfo->getDischargeDept());
                 $arrQuestions[] = $q;
             }
             if ($q = $episodeInfoForm->findArrayQuestion($arrayHeader->getId(), $ix, KangxinItemCodes::DISCHARGE_STATUS)) {
-                $q->setAnswer($importInfo->getDischargeStatus());
+                $q->setAnswer($kxEpisodeInfo->getDischargeStatus());
                 $arrQuestions[] = $q;
             }
             if ($q = $episodeInfoForm->findArrayQuestion($arrayHeader->getId(), $ix, KangxinItemCodes::DISCHARGE_STATUS_OPTIONS)) {
-                $q->setValue($importInfo->getDischargeStatus());
+                $q->setValue($kxEpisodeInfo->getDischargeStatus());
                 $arrQuestions[] = $q;
             }
             if ($q = $episodeInfoForm->findArrayQuestion($arrayHeader->getId(), $ix, KangxinItemCodes::DOCTOR)) {
-                $q->setAnswer($importInfo->getDoctor());
+                $q->setAnswer($kxEpisodeInfo->getDoctor());
                 $arrQuestions[] = $q;
             }
             if ($q = $episodeInfoForm->findArrayQuestion($arrayHeader->getId(), $ix, KangxinItemCodes::DOCTOR_CODE)) {
-                $q->setAnswer($importInfo->getDoctorCode());
+                $q->setAnswer($kxEpisodeInfo->getDoctorCode());
                 $arrQuestions[] = $q;
             }
             if ($q = $episodeInfoForm->findArrayQuestion($arrayHeader->getId(), $ix, KangxinItemCodes::RESPONSIBLE_NURSE)) {
-                $q->setAnswer($importInfo->getResponsibleNurse());
+                $q->setAnswer($kxEpisodeInfo->getResponsibleNurse());
                 $arrQuestions[] = $q;
             }
             if ($q = $episodeInfoForm->findArrayQuestion($arrayHeader->getId(), $ix, KangxinItemCodes::RESPONSIBLE_NURSE_CODE)) {
-                $q->setAnswer($importInfo->getResponsibleNurseCode());
+                $q->setAnswer($kxEpisodeInfo->getResponsibleNurseCode());
                 $arrQuestions[] = $q;
             }
         }
 
         $ix = 1;
-        $diagnosis = $importInfo->getDiagnosis();
+        $diagnosis = $kxEpisodeInfo->getDiagnosis();
         if (!empty($diagnosis) && ($arrayHeader = $episodeInfoForm->findQuestion(KangxinItemCodes::DIAGNOSIS_ARRAY)) &&
                 $arrayHeader->getType() == APIQuestion::TYPE_ARRAY) {
             if ($q = $episodeInfoForm->findArrayQuestion($arrayHeader->getId(), $ix, KangxinItemCodes::DISCHARGE_MAIN_DIAGNOSIS_CODE)) {
-                $q->setAnswer($importInfo->getDischargeDiseaseCode());
+                $q->setAnswer($kxEpisodeInfo->getDischargeDiseaseCode());
                 $arrQuestions[] = $q;
             }
             if ($q = $episodeInfoForm->findArrayQuestion($arrayHeader->getId(), $ix, KangxinItemCodes::DISCHARGE_MAIN_DIAGNOSIS)) {
-                $q->setAnswer($importInfo->getDischargeMainDiagnosis());
+                $q->setAnswer($kxEpisodeInfo->getDischargeMainDiagnosis());
                 $arrQuestions[] = $q;
             }
             $ix++;
@@ -736,7 +924,7 @@ class ServiceFunctions {
         }
 
         $ix = 1;
-        $procedures = $importInfo->getProcedures();
+        $procedures = $kxEpisodeInfo->getProcedures();
         if (!empty($procedures) && ($arrayHeader = $episodeInfoForm->findQuestion(KangxinItemCodes::PROCEDURE_ARRAY)) &&
                 $arrayHeader->getType() == APIQuestion::TYPE_ARRAY) {
             foreach ($procedures as $procedure) {
@@ -802,8 +990,8 @@ class ServiceFunctions {
             $this->apiLK->form_set_all_answers($episodeInfoForm->getId(), $arrQuestions, true);
         }
 
-        if ($importInfo->getAdmissionTime()) {
-            $dateParts = explode(' ', $importInfo->getAdmissionTime());
+        if ($kxEpisodeInfo->getAdmissionTime()) {
+            $dateParts = explode(' ', $kxEpisodeInfo->getAdmissionTime());
             $date = $dateParts[0];
             $time = $dateParts[1];
             $episodeTask->setDate($date);
@@ -811,23 +999,125 @@ class ServiceFunctions {
             $episodeTask->setLocked(true);
             $episodeTask->save();
         }
+
+        return $episodeInfoForm;
     }
 
     /**
-     * Creates the TASK (if not created yet) for the Case Manager to select a patient for the PCI Discharge program
+     * Creates or updates a TASK for each operation (medical procedure) of the clinical episode
      *
      * @param APIAdmission $admission
+     * @param KangxinPatientInfo $kxEpisodeInfo
      */
-    private function createSelectionTask($admission) {
+    private function updateOperationTasks($admission, $kxEpisodeInfo) {
         $filter = new TaskFilter();
-        $filter->setTaskCodes(self::KANGXIN_ENROL_SELECT);
-        $existingTasks = $admission->getTaskList(1, 0, $filter);
+        $filter->setTaskCodes(self::KANGXIN_OPERATION_TASK_CODE);
+        $currentTaskList = $admission->getTaskList(1, 0, $filter);
 
-        if (count($existingTasks) > 0) {
-            // Not necessary to insert the TASK because it already exists
-            return;
+        /*
+         * If there already exist some TASKs, check which corresponds to each procedure so that we can update it.
+         * If some procedure doesn't have a related TASK, then it will be necessary to create a new one
+         */
+        $existingOperationTasks = [];
+        foreach ($currentTaskList as $task) {
+            $operationForms = $task->findForm(self::KANGXIN_OPERATION_FORM_CODE);
+            /** @var APIForm $form */
+            $form = !empty($operationForms) ? reset($operationForms) : null;
+            if ($form) {
+                $item = $form->findQuestion(KangxinItemCodes::OPERATION_ID);
+                $existingOperationTasks[$item->getValue()] = ['task' => $task, 'form' => $form];
+            }
         }
-        $admission->insertTask(self::KANGXIN_ENROL_SELECT);
+
+        foreach ($kxEpisodeInfo->getProcedures() as $procedure) {
+            if (!array_key_exists($procedure->getApplyOperatNo(), $existingOperationTasks)) {
+                // It is necessary to create a new TASK to store the operation information
+                $task = $admission->insertTask(self::KANGXIN_OPERATION_TASK_CODE);
+                $operationForms = $task->findForm(self::KANGXIN_OPERATION_FORM_CODE);
+                if (empty($operationForms)) {
+                    $errorMsg = 'ERROR UPDATING EPISODE DATA OF PATIENT ' . $kxEpisodeInfo->getName() . '(' . $kxEpisodeInfo->getSickId() . '): ';
+                    $errorMsg .= 'Cannot store operation data: The FORM with code: "' . self::KANGXIN_OPERATION_FORM_CODE .
+                            '" does not exist in TASK "' . $task->getTaskCode() . '" (' . $task->getId() . ')';
+                    throw new ServiceException(ErrorCodes::DATA_MISSING, $errorMsg);
+                }
+                $form = !empty($operationForms) ? reset($operationForms) : null;
+                $existingOperationTasks[$procedure->getApplyOperatNo()] = ['task' => $task, 'form' => $form];
+            } else {
+                $task = $existingOperationTasks[$procedure->getApplyOperatNo()]['task'];
+                $form = $existingOperationTasks[$procedure->getApplyOperatNo()]['form'];
+            }
+
+            $arrQuestions = [];
+            if ($q = $form->findQuestion(KangxinItemCodes::OPERATION_ID)) {
+                $q->setAnswer($procedure->getApplyOperatNo());
+                $arrQuestions[] = $q;
+            }
+            if ($q = $form->findQuestion(KangxinItemCodes::PROCESS_ORDER)) {
+                $q->setAnswer($procedure->getProcessOrder());
+                $arrQuestions[] = $q;
+            }
+            if ($q = $form->findQuestion(KangxinItemCodes::OPERATION_DATE)) {
+                $q->setAnswer($procedure->getOperationDate());
+                $arrQuestions[] = $q;
+            }
+            if ($q = $form->findQuestion(KangxinItemCodes::OPERATION_LEVEL)) {
+                $q->setAnswer($procedure->getOperationLevel());
+                $arrQuestions[] = $q;
+            }
+            if ($q = $form->findQuestion(KangxinItemCodes::OPERATION_DOCTOR)) {
+                $q->setAnswer($procedure->getOperationDoctor());
+                $arrQuestions[] = $q;
+            }
+            if ($q = $form->findQuestion(KangxinItemCodes::OPERATION_DOCTOR_CODE)) {
+                $q->setAnswer($procedure->getOperationDoctorCode());
+                $arrQuestions[] = $q;
+            }
+            if ($q = $form->findQuestion(KangxinItemCodes::OPERATION_TYPE)) {
+                $q->setAnswer($procedure->getOperationType());
+                $arrQuestions[] = $q;
+            }
+            if ($q = $form->findQuestion(KangxinItemCodes::OPERATION_CODE)) {
+                $q->setAnswer($procedure->getOperationCode());
+                $arrQuestions[] = $q;
+            }
+            if ($q = $form->findQuestion(KangxinItemCodes::OPERATION_NAME)) {
+                $q->setAnswer($procedure->getOperationName());
+                $arrQuestions[] = $q;
+            }
+            if ($q = $form->findQuestion(KangxinItemCodes::OPERATION_NAME_1)) {
+                $q->setAnswer($procedure->getOperationName1());
+                $arrQuestions[] = $q;
+            }
+            if ($q = $form->findQuestion(KangxinItemCodes::OPERATION_NAME_2)) {
+                $q->setAnswer($procedure->getOperationName2());
+                $arrQuestions[] = $q;
+            }
+            if ($q = $form->findQuestion(KangxinItemCodes::OPERATION_NAME_3)) {
+                $q->setAnswer($procedure->getOperationName3());
+                $arrQuestions[] = $q;
+            }
+
+            if ($q = $form->findQuestion(KangxinItemCodes::OPERATION_NAME_4)) {
+                $q->setAnswer($procedure->getOperationName4());
+                $arrQuestions[] = $q;
+            }
+
+            if (!empty($arrQuestions)) {
+                $this->apiLK->form_set_all_answers($form->getId(), $arrQuestions, true);
+            }
+
+            // Update the datetime of the TAKS if necessary
+            $dateParts = explode(' ', $procedure->getOperationDate());
+            $date = $dateParts[0];
+            $time = count($dateParts) > 1 ? $dateParts[1] : null;
+            $task->setLocked(true);
+
+            if ($task->getDate() != $date || (!$time && $task->getHour() != $time)) {
+                $task->setDate($procedure->getOperationDate());
+                $task->setHour($time);
+                $task->save();
+            }
+        }
     }
 
     /**

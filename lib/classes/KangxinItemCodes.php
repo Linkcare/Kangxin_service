@@ -31,6 +31,7 @@ class KangxinItemCodes {
     const SOURCE = 'SOURCE';
     const LAST_UPDATE = 'LAST_UPDATE';
     const LAST_IMPORT = 'LAST_IMPORT';
+    const FOLLOWUP_ADMISSION = 'FOLLOWUP_ADMISSION';
 
     // Adamission info table
     const ADMISSION_INFO_TABLE = 'ADMISSION_INFO_TABLE';

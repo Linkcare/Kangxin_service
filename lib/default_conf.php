@@ -23,8 +23,14 @@ $GLOBALS['LANGUAGE'] = 'ZH';
 /* Endpoint URL of the Kangxin API */
 $GLOBALS['KANGXIN_API_URL'] = 'http://183.230.182.185:6050/dmp/phm';
 
-/* Program and Team codes of the Subscription where the admissions of the patients will be created */
-$GLOBALS['PROGRAM_CODE'] = 'KANGXIN_ADMISSIONS';
+/* Program code of the Subscription to store the information about the episodes received from Kangxin */
+$GLOBALS['KANGXIN_EPISODES_PROGRAM_CODE'] = 'KANGXIN_ADMISSIONS';
+/*
+ * Program code of a Subscription of a secondary PROGRAM. When a new episode is received from Kangxin, a new ADMISSION will also be created in this
+ * SUBSCRIPTION. The goal is to let a Case Manager decide whether the patient must be enrolled in any Post Intervention Follow-up PROGRAM
+ */
+$GLOBALS['DISCHARGE_FOLLOWUP_PROGRAM_CODE'] = 'PCI_DCH';
+/* Team code of the Subscription owner */
 $GLOBALS['TEAM_CODE'] = 'xxxxx';
 /*
  * Date of the oldest procedure that will be requested to the Kangxin API. This value normally is only used during
@@ -87,6 +93,12 @@ $GLOBALS['KANGXIN_REQUEST_DELAY'] = 5;
  * This parameter allows to configure how records should be requested
  */
 $GLOBALS['USE_UPDATE_TIME_FILTER'] = true;
+
+/*
+ * If true, when an episode information changes respect to the last information in the PHM, a notification will be sent to the Case Manager indicating
+ * that there are changes in the patient information
+ */
+$GLOBALS['INFORM_EPISODE_CHANGES'] = true;
 
 /**
  * SIMULATION CONFIGURATION PARAMETERS

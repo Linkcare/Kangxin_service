@@ -21,4 +21,7 @@ class ErrorCodes {
 
     /** @var string An error happened executing a DB command */
     const DB_ERROR = 'DB_ERROR';
+
+    /** @var string Required data does not exist */
+    const DATA_MISSING = 'DATA_MISSING';
 }

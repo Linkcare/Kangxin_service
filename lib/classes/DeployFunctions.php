@@ -41,6 +41,34 @@ class DeployFunctions {
     }
 
     /**
+     * Checks the existence of a column in a table
+     * If an $ownerName is provided, then assume that we are using an administrative account to check the existence of another user's object
+     *
+     * @param string $tableName
+     * @param string $columnName
+     * @param string $ownerName
+     * @throws ServiceException
+     */
+    private function columnExists($tableName, $columnName, $ownerName = null) {
+        $arrVariables[':tableName'] = $tableName;
+        $arrVariables[':colName'] = $columnName;
+        if ($ownerName) {
+            $arrVariables[':ownerName'] = $ownerName;
+            $sql = "SELECT TABLE_NAME FROM DBA_TAB_COLUMNS WHERE TABLE_NAME=:tableName AND COLUMN_NAME=:colName AND OWNER=:ownerName";
+        } else {
+            $sql = "SELECT COLUMN_NAME FROM USER_TAB_COLUMNS WHERE TABLE_NAME=:tableName AND COLUMN_NAME=:colName";
+        }
+
+        $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
+        $error = Database::getInstance()->getError();
+        if ($error->getCode()) {
+            throw new ServiceException(ErrorCodes::DB_ERROR, $error->getMessage());
+        }
+
+        return $rst->Next() != null;
+    }
+
+    /**
      * Checks the existence of an index
      * If an $ownerName is provided, then assume that we are using an administrative account to check the existence of another user's object
      *
@@ -198,6 +226,7 @@ class DeployFunctions {
                     CREATION_DATE DATE NOT NULL,
                     LAST_UPDATE DATE NOT NULL,
                     RECORD_CONTENT CLOB NULL,
+                    PREV_RECORD_CONTENT CLOB NULL,
                     CHANGED NUMBER NULL,
                 CONSTRAINT RECORD_POOL_PK PRIMARY KEY (ID_RECORD_POOL)
                 )";
@@ -207,6 +236,29 @@ class DeployFunctions {
             } catch (Exception $e) {
                 $result[] = "Table RECORD_POOL: ERROR " . $e->getMessage();
                 return $result;
+            }
+        }
+
+        // Field added in version 2 to table RECORD_POOL. Ensure to create it if not exists
+        if (!$this->columnExists('RECORD_POOL', 'PREV_RECORD_CONTENT', $ownerName)) {
+            // Add new column and apply migration script
+            $sql = "ALTER TABLE $ownerName.RECORD_POOL ADD PREV_RECORD_CONTENT CLOB NULL";
+            Database::getInstance()->ExecuteQuery($sql);
+            $error = Database::getInstance()->getError();
+            if ($error->getCode()) {
+                $result[] = "Column RECORD_POOL.PREV_RECORD_CONTENT: ERROR " . $error->getMessage();
+                return $result;
+            } else {
+                $result[] = "Column RECORD_POOL.PREV_RECORD_CONTENT added successfully";
+            }
+
+            // Update all records that are marked as "No changes" because it means that they were processed successfully in the past
+            $sql = "UPDATE $ownerName.RECORD_POOL t SET t.PREV_RECORD_CONTENT = t.RECORD_CONTENT WHERE t.CHANGED=0 AND t.PREV_RECORD_CONTENT IS NULL";
+            Database::getInstance()->ExecuteQuery($sql);
+            $error = Database::getInstance()->getError();
+            if ($error->getCode()) {
+                $result[] = "Column RECORD_POOL.PREV_RECORD_CONTENT: WARNING!! The new column could not be updated with previous changes: " .
+                        $error->getMessage();
             }
         }
 

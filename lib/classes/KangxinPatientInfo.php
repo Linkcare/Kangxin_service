@@ -3,6 +3,20 @@
 class KangxinPatientInfo {
     /** @var stdClass */
     private $originalObject;
+    /**
+     * This member indicates if any change in the properties of the object must be tracked
+     *
+     * @var boolean
+     */
+    private $trackChanges = true;
+    private $changeList = [];
+    /**
+     * When change tracking is set, whenever a new Procedure is added to the list of procedures it will also be tracked to know that the list of
+     * procedures has been modified
+     *
+     * @var KangxinProcedure
+     */
+    private $newProcedures = [];
 
     /** @var string*/
     private $sickId;
@@ -542,6 +556,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setName($value) {
+        $this->trackPropertyChange('name', $value, $this->name);
         $this->name = $value;
     }
 
@@ -551,6 +566,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setSex($value) {
+        $this->trackPropertyChange('sex', $value, $this->sex);
         $this->sex = $value;
     }
 
@@ -560,6 +576,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setBirthDate($value) {
+        $this->trackPropertyChange('birthDate', $value, $this->birthDate);
         $this->birthDate = $value;
     }
 
@@ -569,6 +586,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setEthnicity($value) {
+        $this->trackPropertyChange('ethnicity', $value, $this->ethnicity);
         $this->ethnicity = $value;
     }
 
@@ -578,6 +596,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setNationality($value) {
+        $this->trackPropertyChange('nationality', $value, $this->nationality);
         $this->nationality = $value;
     }
 
@@ -587,6 +606,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setIdCard($value) {
+        $this->trackPropertyChange('idCard', $value, $this->idCard);
         $this->idCard = $value;
     }
 
@@ -596,6 +616,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setIdCardType($value) {
+        $this->trackPropertyChange('idCardType', $value, $this->idCardType);
         $this->idCardType = $value;
     }
 
@@ -605,6 +626,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setPhone($value) {
+        $this->trackPropertyChange('phone', $value, $this->phone);
         $this->phone = $value;
     }
 
@@ -614,6 +636,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setContactName($value) {
+        $this->trackPropertyChange('contactName', $value, $this->contactName);
         $this->contactName = $value;
     }
 
@@ -623,6 +646,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setRelation($value) {
+        $this->trackPropertyChange('relation', $value, $this->relation);
         $this->relation = $value;
     }
 
@@ -632,6 +656,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setMarital($value) {
+        $this->trackPropertyChange('marital', $value, $this->marital);
         $this->marital = $value;
     }
 
@@ -641,6 +666,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setKind($value) {
+        $this->trackPropertyChange('kind', $value, $this->kind);
         $this->kind = $value;
     }
 
@@ -650,6 +676,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setProfession($value) {
+        $this->trackPropertyChange('profession', $value, $this->profession);
         $this->profession = $value;
     }
 
@@ -659,6 +686,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setContactPhone($value) {
+        $this->trackPropertyChange('contactPhone', $value, $this->contactPhone);
         $this->contactPhone = $value;
     }
 
@@ -667,6 +695,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setAdmissionTime($value) {
+        $this->trackPropertyChange('admissionTime', $value, $this->admissionTime);
         $this->admissionTime = $value;
     }
 
@@ -675,6 +704,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setAdmissionDept($value) {
+        $this->trackPropertyChange('admissionDept', $value, $this->admissionDept);
         $this->admissionDept = $value;
     }
 
@@ -683,6 +713,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setHospitalAdmission($value) {
+        $this->trackPropertyChange('hospitalAdmission', $value, $this->hospitalAdmission);
         $this->hospitalAdmission = $value;
     }
 
@@ -691,6 +722,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setDischargeTime($value) {
+        $this->trackPropertyChange('dischargeTime', $value, $this->dischargeTime);
         $this->dischargeTime = $value;
     }
 
@@ -699,6 +731,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setDischargeDept($value) {
+        $this->trackPropertyChange('dischargeDept', $value, $this->dischargeDept);
         $this->dischargeDept = $value;
     }
 
@@ -707,6 +740,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setDischargeStatus($value) {
+        $this->trackPropertyChange('dischargeStatus', $value, $this->dischargeStatus);
         $this->dischargeStatus = $value;
     }
 
@@ -715,6 +749,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setAdmissionDiag($value) {
+        $this->trackPropertyChange('admissionDiag', $value, $this->admissionDiag);
         $this->admissionDiag = $value;
     }
 
@@ -723,6 +758,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setDischargeDiag($value) {
+        $this->trackPropertyChange('dischargeDiag', $value, $this->dischargeDiag);
         $this->dischargeDiag = $value;
     }
 
@@ -732,6 +768,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setDischargeDiseaseCode($value) {
+        $this->trackPropertyChange('dischargeDiseaseCode', $value, $this->dischargeDiseaseCode);
         $this->dischargeDiseaseCode = $value;
     }
 
@@ -741,6 +778,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setDischargeMainDiagnosis($value) {
+        $this->trackPropertyChange('dischargeMainDiagnosis', $value, $this->dischargeMainDiagnosis);
         $this->dischargeMainDiagnosis = $value;
     }
 
@@ -750,6 +788,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setOtherDiseaseCodes($value) {
+        $this->trackPropertyChange('otherDiseaseCodes', $value, $this->otherDiseaseCodes);
         $this->otherDiseaseCodes = $value;
 
         $list = explode(',', $value);
@@ -765,6 +804,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setDischargeOtherDiagnoses($value) {
+        $this->trackPropertyChange('dischargeOtherDiagnoses', $value, $this->dischargeOtherDiagnoses);
         $this->dischargeOtherDiagnoses = $value;
 
         $list = explode(',', $value);
@@ -779,6 +819,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setDrugAllergy($value) {
+        $this->trackPropertyChange('drugAllergy', $value, $this->drugAllergy);
         $this->drugAllergy = $value;
     }
 
@@ -787,6 +828,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setDoctor($value) {
+        $this->trackPropertyChange('doctor', $value, $this->doctor);
         $this->doctor = $value;
     }
 
@@ -795,6 +837,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setResponsibleNurse($value) {
+        $this->trackPropertyChange('responsibleNurse', $value, $this->responsibleNurse);
         $this->responsibleNurse = $value;
     }
 
@@ -812,6 +855,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setHospitalized($value) {
+        $this->trackPropertyChange('hospitalized', $value, $this->hospitalized);
         $this->hospitalized = $value;
     }
 
@@ -821,6 +865,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setApplyOperatno($value) {
+        $this->trackPropertyChange('applyOperatNo', $value, $this->applyOperatNo);
         $this->applyOperatNo = $value;
     }
 
@@ -830,6 +875,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setOperationDate($value) {
+        $this->trackPropertyChange('operationDate', $value, $this->operationDate);
         $this->operationDate = $value;
     }
 
@@ -839,6 +885,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setProcessOrder($value) {
+        $this->trackPropertyChange('processOrder', $value, $this->processOrder);
         $this->processOrder = $value;
     }
 
@@ -847,6 +894,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setDischargeSituation($value) {
+        $this->trackPropertyChange('dischargeSituation', $value, $this->dischargeSituation);
         $this->dischargeSituation = $value;
     }
 
@@ -855,6 +903,7 @@ class KangxinPatientInfo {
      * @param string $value
      */
     public function setDischargeInstructions($value) {
+        $this->trackPropertyChange('dischargeInstructions', $value, $this->dischargeInstructions);
         $this->dischargeInstructions = $value;
     }
 
@@ -869,19 +918,182 @@ class KangxinPatientInfo {
     /**
      * ******* METHODS *******
      */
+
     /**
+     * Extracts the information about an operation from a record received from the Kangxin hospital.
+     * A new KangxinOperation object will be added to the list of operations of the episode
      *
-     * @param int $operationId
-     * @return KangxinProcedure
+     * @param stdClass $info
      */
-    private function findOrCreateProcedure($operationId) {
-        if (array_key_exists($operationId, $this->procedures)) {
-            $procedure = $this->procedures[$operationId];
-        } else {
-            $procedure = new KangxinProcedure($operationId);
-            $this->procedures[$operationId] = $procedure;
+    public function addOperation($info) {
+        if (isNullOrEmpty($info->applyOperatNo)) {
+            return;
         }
-        return $procedure;
+        if (array_key_exists($info->applyOperatNo, $this->procedures)) {
+            $procedure = $this->procedures[$info->applyOperatNo];
+            $procedure->update($info);
+        } else {
+            $procedure = KangxinProcedure::fromJson($info);
+            $this->procedures[$info->applyOperatNo] = $procedure;
+            if ($this->trackChanges) {
+                // A new procedure has been created and change trackin is active, so we store a list of new procedures added
+                $this->newProcedures[$info->applyOperatNo] = $procedure;
+            }
+        }
+    }
+
+    /**
+     * Updates a KangxinPatientInfo object from the information received from the Kangxin hospital
+     *
+     * @param stdClass $episodeOperations
+     */
+    public function update($episodeOperations) {
+        if (empty($episodeOperations)) {
+            return;
+        }
+        if (!is_array($episodeOperations)) {
+            $episodeOperations = [$episodeOperations];
+        }
+
+        usort($episodeOperations,
+                function ($op1, $op2) {
+                    /* @var stdClass $op1 */
+                    /* @var stdClass $op2 */
+                    if ($op1->operationDate > $op2->operationDate) {
+                        return -1;
+                    } elseif ($op1->operationDate < $op2->operationDate) {
+                        return 1;
+                    }
+                    return 0;
+                });
+        // The first operation of the list is the most recent one, so it contains the most updated general information about the patient and the
+        // episode
+        /* @var RecordPool $lastOperation */
+        $lastOperation = reset($episodeOperations);
+
+        $this->originalObject = $lastOperation;
+        $jsonVars = get_object_vars($lastOperation);
+        foreach ($jsonVars as $name => $value) {
+            $setterFn = 'set' . strtoupper(substr($name, 0, 1)) . substr($name, 1);
+            // The properties returned by the Kangxin service match the names of the members of this class
+            if (method_exists($this, $setterFn)) {
+                $this->{$setterFn}($value);
+            }
+        }
+
+        // Now create the list of operations of this episode
+        foreach ($episodeOperations as $operation) {
+            $this->addOperation($operation);
+        }
+    }
+
+    /**
+     * Returns true if any property of the object has been modified
+     *
+     * @return boolean
+     */
+    public function hasChanges() {
+        if (count($this->changeList) > 0 || count($this->newProcedures) > 0) {
+            return true;
+        }
+        foreach ($this->getProcedures() as $proc) {
+            if ($proc->hasChanges()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns a message composed by OBJECT CODES informing about the relevant changes detected.
+     * Object Codes allow to handle language localization because the literals are defined in the PROGRAM
+     *
+     * @return string
+     */
+    function generateChangeMessage() {
+        $itemCodes = [];
+        if (!$this->hasChanges()) {
+            return null;
+        }
+
+        // Check changes in operations
+        if (count($this->newProcedures) > 0) {
+            // New procedures added
+            $itemCodes[] = 'OPERATION_NEW';
+        } else {
+            foreach ($this->getProcedures() as $proc) {
+                if ($proc->hasChanges()) {
+                    $itemCodes[] = 'OPERATION_UPDATE';
+                    break;
+                }
+            }
+        }
+
+        // Check changes in discharge information
+        if ($this->dischargeTime && array_key_exists('dischargeTime', $this->changeList) && isNullOrEmpty($this->changeList['dischargeTime'])) {
+            // Discharge information has been added
+            $itemCodes[] = 'DISCHARGE_NEW';
+        } else {
+            $fieldsToCheck = ['dischargeDept', 'dischargeDiag', 'dischargeInstructions', 'dischargeSituation', 'dischargeStatus', 'dischargeTime'];
+            foreach ($fieldsToCheck as $fName) {
+                if (array_key_exists($fName, $this->changeList)) {
+                    $itemCodes[] = 'DISCHARGE_UPDATE';
+                    break;
+                }
+            }
+        }
+
+        foreach ($itemCodes as $itemCode) {
+            $messages[] = "@TASK{PCI_DCH_LITERALS}.FORM{PCI_DCH_EPISODE_UPDATE_MSGS}.ITEM{" . $itemCode . "}.TITLE";
+        }
+
+        return implode("\n", $messages);
+    }
+
+    /**
+     * Creates a KangxinPatientInfo object from the information received from the Kangxin hospital
+     *
+     * @param stdClass $episodeOperations
+     * @return KangxinPatientInfo
+     */
+    static function fromJson($episodeOperations) {
+        $patientInfo = new KangxinPatientInfo();
+        if (empty($episodeOperations)) {
+            return $patientInfo;
+        }
+        if (!is_array($episodeOperations)) {
+            $episodeOperations = [$episodeOperations];
+        }
+
+        /* This is the first time that we create the object, so it is not necessary to track the changes */
+        $patientInfo->trackChanges = false;
+        $patientInfo->update($episodeOperations);
+        /* From this moment we want to track the changes in any of the object properties */
+        $patientInfo->trackChanges = true;
+
+        return $patientInfo;
+    }
+
+    /**
+     * When the value of a property is changed, this function stores a copy of the previous value
+     *
+     * @param string $propertyName
+     * @param string $newValue
+     * @param string $previousValue
+     */
+    private function trackPropertyChange($propertyName, $newValue, $previousValue) {
+        if (!$this->trackChanges) {
+            return;
+        }
+        if (isNullOrEmpty($newValue)) {
+            $newValue = null;
+        }
+        if (isNullOrEmpty($previousValue)) {
+            $previousValue = null;
+        }
+        if ($newValue !== $previousValue) {
+            $this->changeList[$propertyName] = [$previousValue];
+        }
     }
 
     /**
@@ -897,54 +1109,5 @@ class KangxinPatientInfo {
             $this->diagnosis[$ix] = $diagnosis;
         }
         return $diagnosis;
-    }
-
-    /**
-     * Extracts the information about an operation from a record received from the Kangxin hospital.
-     * A new KangxinOperation object will be added to the list of operations of the episode
-     *
-     * @param stdClass $info
-     */
-    public function addOperation($info) {
-        if (isNullOrEmpty($info->applyOperatNo)) {
-            return;
-        }
-        $procedure = $this->findOrCreateProcedure($info->applyOperatNo);
-        $procedure->setOperationType($info->operationType);
-        $procedure->setProcessOrder($info->processOrder);
-        $procedure->setOperationDoctor($info->operationDoctor);
-        $procedure->setOperationName($info->operationName);
-        $procedure->setOperationDate($info->operationDate);
-        $procedure->setOperationName1($info->operationName1);
-        $procedure->setOperationName2($info->operationName2);
-        $procedure->setOperationName3($info->operationName3);
-        $procedure->setOperationName4($info->operationName4);
-        $procedure->setOperationLevel($info->operationLevel);
-    }
-
-    /**
-     * Creates a KangxinPatientInfo object from the information received from the Kangxin hospital
-     *
-     * @param stdClass $info
-     * @return KangxinPatientInfo
-     */
-    static function fromJson($info) {
-        $patientInfo = new KangxinPatientInfo();
-        if (!$info) {
-            return $patientInfo;
-        }
-
-        $patientInfo->originalObject = $info;
-        $jsonVars = get_object_vars($info);
-        foreach ($jsonVars as $name => $value) {
-            $setterFn = 'set' . strtoupper(substr($name, 0, 1)) . substr($name, 1);
-            // The properties returned by the Kangxin service match the names of the members of this class
-            if (method_exists($patientInfo, $setterFn))
-                $patientInfo->{$setterFn}($value);
-        }
-
-        $patientInfo->addOperation($info);
-
-        return $patientInfo;
     }
 }

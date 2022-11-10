@@ -626,7 +626,7 @@ class LinkcareSoapAPI {
      * @throws APIException
      * @return APIAdmission[]
      */
-    public function case_admission_list($caseId, $get = false, $subscriptionId = null, $search) {
+    public function case_admission_list($caseId, $get = false, $subscriptionId = null, $search = null) {
         $admissionList = [];
         $params = ["case" => $caseId, "get" => $get ? "1" : "", "subscription" => $subscriptionId, "search_str" => $search];
         $resp = $this->invoke('case_admission_list', $params);
@@ -741,6 +741,64 @@ class LinkcareSoapAPI {
 
         $params = ["form" => $formId, "xml_answers" => $xml->toString(), "close_form" => $closeForm ? "1" : ""];
         $this->invoke('form_set_all_answers', $params);
+    }
+
+    /**
+     *
+     * @param string $date
+     * @param string $caseId
+     * @param string $eventType
+     * @param string $eventCode
+     * @param string $teamId
+     * @param string $admissionId
+     * @param string $message
+     * @param stdClass $options
+     * @throws APIException
+     * @return string
+     */
+    function event_insert($date = null, $caseId = null, $eventType = null, $eventCode = null, $teamId = null, $admissionId = null, $message = null,
+            $options = null) {
+        if (!$date) {
+            $date = currentDate($this->session->getTimezone());
+        }
+        $params = ["date" => $date, "case" => $caseId, "event_type" => $eventType, "event_code" => $eventCode, "team" => $teamId,
+                "admission" => $admissionId, "message" => $message];
+        if ($options && is_object($options)) {
+            $params['options'] = json_encode($options);
+        }
+        $resp = $this->invoke('event_insert', $params);
+        return $resp->getResult();
+    }
+
+    /**
+     *
+     * @param int $eventId
+     * @throws APIException
+     * @return APIEvent
+     */
+    public function event_get($eventId) {
+        $event = null;
+        $params = ["event_id" => $eventId];
+        $resp = $this->invoke('event_get', $params);
+        if (!$resp->getErrorCode()) {
+            if ($found = simplexml_load_string($resp->getResult())) {
+                $event = APIEvent::parseXML($found);
+            }
+        }
+
+        return $event;
+    }
+
+    /**
+     *
+     * @param APIEvent $event
+     * @throws APIException
+     */
+    function event_set($event) {
+        $xml = new XMLHelper('event');
+        $event->toXML($xml, null);
+        $params = ["event" => $xml->toString()];
+        $this->invoke('event_set', $params);
     }
 
     /*

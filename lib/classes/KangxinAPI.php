@@ -228,7 +228,7 @@ class KangxinAPI {
               "residenceNo": "9996197001",
               "applyOperatNo": "prc1168450",
               "operationType": "介入手术",
-              "operationDate": "2022-10-03 02:20:50",
+              "operationDate": "2022-10-03 02:20:51",
               "processOrder": "冠状动脉(介入)",
               "operationDoctor": "何云/000227",
               "operationName": "冠状动脉造影及支架植入术",

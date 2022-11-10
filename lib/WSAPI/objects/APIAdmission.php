@@ -69,6 +69,11 @@ class APIAdmission {
             if ($xmlNode->data->subscription) {
                 $admission->subscription = APISubscription::parseXML($xmlNode->data->subscription);
             }
+            if ($xmlNode->data->referrals) {
+                foreach ($xmlNode->data->referrals->referral as $referralNode) {
+                    $admission->subscription = APISubscription::parseXML($xmlNode->data->subscription);
+                }
+            }
             if ($xmlNode->performance) {
                 $admission->performance = APIAdmissionPerformance::parseXML($xmlNode->performance);
             } else {

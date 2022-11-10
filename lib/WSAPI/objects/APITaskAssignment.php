@@ -2,8 +2,9 @@
 
 class APITaskAssignment {
     const CASE_MANAGER = 24;
-    const SERVICE = 47;
     const PATIENT = 39;
+    const SERVICE = 47;
+    const REFERRAL = 48;
 
     // Private members
     private $teamId;
@@ -27,13 +28,25 @@ class APITaskAssignment {
         }
         $assignment = new APITaskAssignment();
         if ($xmlNode->team) {
-            $assignment->teamId = NullableString($xmlNode->team->id);
+            if ($xmlNode->team->ref) {
+                $assignment->teamId = NullableString($xmlNode->team->ref);
+            } else {
+                $assignment->teamId = NullableString($xmlNode->team->id);
+            }
         }
         if ($xmlNode->role) {
-            $assignment->roleId = NullableString($xmlNode->role->id);
+            if ($xmlNode->role->ref) {
+                $assignment->roleId = NullableString($xmlNode->role->ref);
+            } else {
+                $assignment->roleId = NullableString($xmlNode->role->id);
+            }
         }
         if ($xmlNode->user) {
-            $assignment->userId = NullableString($xmlNode->user->id);
+            if ($xmlNode->user->ref) {
+                $assignment->userId = NullableString($xmlNode->user->ref);
+            } else {
+                $assignment->userId = NullableString($xmlNode->user->id);
+            }
         }
         return $assignment;
     }
@@ -116,12 +129,15 @@ class APITaskAssignment {
 
         $node = $xml->createChildNode($parentNode, "team");
         $xml->createChildNode($node, "id", $this->getTeamId());
+        $xml->createChildNode($node, "ref", $this->getTeamId());
 
         $node = $xml->createChildNode($parentNode, "role");
         $xml->createChildNode($node, "id", $this->getRoleId());
+        $xml->createChildNode($node, "ref", $this->getRoleId());
 
         $node = $xml->createChildNode($parentNode, "user");
         $xml->createChildNode($node, "id", $this->getUserId());
+        $xml->createChildNode($node, "ref", $this->getUserId());
 
         return $parentNode;
     }

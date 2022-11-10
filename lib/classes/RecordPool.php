@@ -21,6 +21,10 @@ class RecordPool {
     private $recordContent;
     /** @var boolean */
     private $recordContentModified;
+    /** @var string */
+    private $prevRecordContent;
+    /** @var boolean */
+    private $prevRecordContentModified;
     /** @var int */
     private $changed;
     private $updateNeeded = [];
@@ -99,6 +103,18 @@ class RecordPool {
      */
     public function getRecordContent() {
         return json_decode($this->recordContent);
+    }
+
+    /**
+     * JSON object with the content of the record retrieved in a previous execution (necessary to check changes respect to the new information
+     *
+     * @return stdClass
+     */
+    public function getPrevRecordContent() {
+        if ($this->prevRecordContent) {
+            return json_decode($this->prevRecordContent);
+        }
+        return null;
     }
 
     /**
@@ -234,6 +250,25 @@ class RecordPool {
     }
 
     /**
+     * JSON object with the content of the record retrieved in a previous execution (necessary to check changes respect to the new information
+     * received)
+     *
+     * @param stdClass $value
+     */
+    public function setPrevRecordContent($jsonObj) {
+        if (!$jsonObj) {
+            return;
+        }
+        $value = json_encode($jsonObj, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (!$value) {
+            throw new ServiceException(ErrorCodes::INVALID_JSON);
+        }
+
+        $this->prevRecordContent = $value;
+        $this->prevRecordContentModified = true;
+    }
+
+    /**
      * ******* METHODS *******
      */
     /**
@@ -271,6 +306,7 @@ class RecordPool {
         $obj->lastUpdate = $rst->GetField('LAST_UPDATE');
         $obj->admissionDate = $rst->GetField('ADMISSION_DATE');
         $obj->recordContent = $rst->GetField('RECORD_CONTENT');
+        $obj->prevRecordContent = $rst->GetField('PREV_RECORD_CONTENT');
         $obj->changed = intval($rst->GetField('CHANGED'));
 
         return $obj;
@@ -310,13 +346,20 @@ class RecordPool {
             $sqlBytesFieldName = ', RECORD_CONTENT';
             $sqlBytesInsert = ', :clob_recordContent';
             $sqlBytesUpdate = 'RECORD_CONTENT = :clob_recordContent';
-            $arrBlobVariables = [':clob_recordContent' => 'RECORD_CONTENT'];
+            $arrBlobVariables[':clob_recordContent'] = 'RECORD_CONTENT';
+        }
+        if ($this->prevRecordContentModified) {
+            $arrVariables[':clob_prevRecordContent'] = $this->prevRecordContent;
+            $sqlPrevBytesFieldName = ', PREV_RECORD_CONTENT';
+            $sqlPrevBytesInsert = ', :clob_prevRecordContent';
+            $sqlPrevBytesUpdate = 'PREV_RECORD_CONTENT = :clob_prevRecordContent';
+            $arrBlobVariables[':clob_prevRecordContent'] = 'PREV_RECORD_CONTENT';
         }
 
         $sql = null;
         if ($isNew) {
-            $sql = "INSERT INTO RECORD_POOL (ID_RECORD_POOL, ID_PATIENT, ID_EPISODE, ID_OPERATION, ADMISSION_DATE, OPERATION_DATE, CREATION_DATE, LAST_UPDATE, CHANGED $sqlBytesFieldName)
-                    VALUES (:id, :patientId, :episodeId, :operationId, :admissionDate, :operationDate, :creationDate, :lastUpdate, :changed $sqlBytesInsert)";
+            $sql = "INSERT INTO RECORD_POOL (ID_RECORD_POOL, ID_PATIENT, ID_EPISODE, ID_OPERATION, ADMISSION_DATE, OPERATION_DATE, CREATION_DATE, LAST_UPDATE, CHANGED $sqlBytesFieldName $sqlPrevBytesFieldName)
+                    VALUES (:id, :patientId, :episodeId, :operationId, :admissionDate, :operationDate, :creationDate, :lastUpdate, :changed $sqlBytesInsert $sqlPrevBytesInsert)";
         } elseif (count($this->updateNeeded) > 0 || $this->recordContentModified) {
             $sqlUpdates = [];
             foreach ($this->updateNeeded as $varName => $fieldName) {
@@ -324,6 +367,9 @@ class RecordPool {
             }
             if ($sqlBytesUpdate) {
                 $sqlUpdates[] = $sqlBytesUpdate;
+            }
+            if ($sqlPrevBytesUpdate) {
+                $sqlUpdates[] = $sqlPrevBytesUpdate;
             }
             $updateStr = implode(',', $sqlUpdates);
             $sql = "UPDATE RECORD_POOL SET $updateStr WHERE ID_RECORD_POOL=:id";
