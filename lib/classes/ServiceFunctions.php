@@ -134,7 +134,7 @@ class ServiceFunctions {
         } catch (Exception $e) {
             $serviceResponse->setCode(ServiceResponse::ERROR);
             $serviceResponse->setMessage(
-                    'ERROR LOADING SUBSCRIPTION (Program: ' . $GLOBALS['KANGXIN_EPISODES_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['TEAM_CODE'] .
+                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['KANGXIN_EPISODES_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['TEAM_CODE'] .
                     ') FOR IMPORTING PATIENTS: ' . $e->getMessage());
             $processHistory->addLog($serviceResponse->getMessage());
             return $serviceResponse;
@@ -146,7 +146,7 @@ class ServiceFunctions {
         } catch (Exception $e) {
             $serviceResponse->setCode(ServiceResponse::ERROR);
             $serviceResponse->setMessage(
-                    'ERROR LOADING SUBSCRIPTION (Program: ' . $GLOBALS['DISCHARGE_FOLLOWUP_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['TEAM_CODE'] .
+                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['DISCHARGE_FOLLOWUP_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['TEAM_CODE'] .
                     ') FOR DISCHARGE FOLLOWUP PATIENTS: ' . $e->getMessage());
             $processHistory->addLog($serviceResponse->getMessage());
             return $serviceResponse;
@@ -349,12 +349,12 @@ class ServiceFunctions {
             // Check whether the Admission already exists
             $admission = $this->findAdmission($patient, $kxEpisodeInfo, $kxEpisodeSubscription);
             if (!$admission) {
-                ServiceLogger::getInstance()->debug('Creating new Admission for patient in Kangxin Admissions PROGRAM', 2);
+                ServiceLogger::getInstance()->debug('Creating new Admission for patient in Kangxin Admissions care plan', 2);
                 $admission = $this->createEpisodeAdmission($patient, $kxEpisodeInfo, $kxEpisodeSubscription);
                 $isNewEpisode = true;
             } else {
                 $isNewEpisode = false;
-                ServiceLogger::getInstance()->debug('Using existing Admission for patient in Kangxin Admissions PROGRAM', 2);
+                ServiceLogger::getInstance()->debug('Using existing Admission for patient in Kangxin Admissions care plan', 2);
             }
             $episodeInfoForm = $this->updateEpisodeData($admission, $kxEpisodeInfo);
             $this->updateOperationTasks($admission, $kxEpisodeInfo);
@@ -380,11 +380,18 @@ class ServiceFunctions {
                      * We received a new Episode from Kangxin, so it is necessary to create an associated ADMISSION in the "DISCHARGE_FOLLOWUP"
                      * PROGRAM
                      */
+                    ServiceLogger::getInstance()->debug('Create new ADMISSION in DISCHARGE_FOLLOWUP care plan', 2);
                     $followUpAdmission = $this->createFollowupAdmission($patient, $kxEpisodeInfo, $episodeInfoForm, $dschFollowupSubscription,
                             $isNewFollowupAdmission);
+                }
+            }
+
+            if (!$followUpAdmission) {
+                // Find the Followup ADMISSION that was created for this episode (if any)
+                if ($followUpAdmission = $this->findFollowupAdmission($episodeInfoForm, $patient, $dschFollowupSubscription)) {
+                    ServiceLogger::getInstance()->debug("The related FOLLOWUP ADMISSION was found: " . $followUpAdmission->getId(), 2);
                 } else {
-                    // Find the Followup ADMISSION that was created for this episode (if any)
-                    $followUpAdmission = $this->findFollowupAdmission($episodeInfoForm, $patient, $dschFollowupSubscription);
+                    ServiceLogger::getInstance()->debug("The related FOLLOWUP ADMISSION of this episode doesn't exist", 2);
                 }
             }
 
@@ -395,10 +402,15 @@ class ServiceFunctions {
                 $followUpAdmissionIsActive = !in_array($followUpAdmission->getStatus(),
                         [APIAdmission::STATUS_DISCHARGED, APIAdmission::STATUS_REJECTED]);
                 if ($followUpAdmissionIsActive && !$isNewFollowupAdmission) {
+                    ServiceLogger::getInstance()->debug('Send notification to the referral', 2);
                     $options = new stdClass();
                     $options->assign_to_role = APITaskAssignment::REFERRAL;
                     $this->apiLK->event_insert(currentDate($this->apiLK->getSession()->getTimezone()), $patient->getId(), null,
                             self::EPISODE_CHANGE_EVENT_CODE, null, $followUpAdmission->getId(), $message, $options);
+                } elseif (!$followUpAdmissionIsActive) {
+                    ServiceLogger::getInstance()->debug('Do not send notification to the referral because the FOLLOWUP ADMISSION is not active', 2);
+                } elseif ($isNewFollowupAdmission) {
+                    ServiceLogger::getInstance()->debug('Do not send notification to the referral because it is a new FOLLOWUP ADMISSION', 2);
                 }
             }
         } catch (ServiceException $se) {

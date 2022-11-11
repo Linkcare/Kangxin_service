@@ -1092,7 +1092,7 @@ class KangxinPatientInfo {
             $previousValue = null;
         }
         if ($newValue !== $previousValue) {
-            $this->changeList[$propertyName] = [$previousValue];
+            $this->changeList[$propertyName] = $previousValue;
         }
     }
 

@@ -1,7 +1,7 @@
 <html>
     <head>
         <meta charset="UTF-8">
-        <title>Kangshin Hospital Integration Service Info</title>
+        <title>Kangxin Hospital Integration Service Info</title>
 
         <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
         <link rel="stylesheet" type="text/css" href="css/font-awesome.min.css">
@@ -109,7 +109,7 @@
     							var detailsSection = '<table class="j_table_details_' + detailsUniqueId +'" style="display: none;">' + detailsTableHeader;
     							// Second, the contents
     							$.each(item.details, function(key, detail) {
-    								detailsSection += '<tr><td></td><td>' + detail.date + '</td><td>' + detail.message + '</td></tr>';
+    								detailsSection += '<tr><td></td><td style="vertical-align: top;">' + detail.date + '</td><td>' + detail.message + '</td></tr>';
     							});
     							// Finally, close the table tag
     							detailsSection += '</table>';
