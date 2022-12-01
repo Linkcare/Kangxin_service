@@ -360,7 +360,13 @@ class ServiceFunctions {
                 ServiceLogger::getInstance()->debug('Using existing Admission for patient in Kangxin Admissions care plan', 2);
             }
 
-            $episodeInfoForm = $this->updateEpisodeData($admission, $kxEpisodeInfo);
+            $referral = null;
+            if ($kxEpisodeInfo->getDoctorCode()) {
+                $referral = $this->createProfessional($kxEpisodeInfo->getDoctorCode(), $kxEpisodeInfo->getDoctorName(), $GLOBALS['CASE_MANAGERS_TEAM'],
+                        APIRole::CASE_MANAGER);
+            }
+
+            $episodeInfoForm = $this->updateEpisodeData($admission, $kxEpisodeInfo, $referral);
             $this->updateOperationTasks($admission, $kxEpisodeInfo);
 
             $admissionModified = false;
@@ -375,16 +381,13 @@ class ServiceFunctions {
                     $admissionModified = true;
                 }
             }
-            if (!$admission->getActiveReferralId() && $kxEpisodeInfo->getDoctorCode()) {
+            if (!$admission->getActiveReferralId() && $referral) {
                 /*
                  * The Admission does not have a referral assigned, but we know the doctor assigned to the episode, so we can assign the referral
                  */
-                if ($referral = $this->createProfessional($kxEpisodeInfo->getDoctorCode(), $kxEpisodeInfo->getDoctorName(),
-                        $GLOBALS['CASE_MANAGERS_TEAM'], APIRole::CASE_MANAGER)) {
-                    $admission->setActiveReferralId($referral->getId());
-                    $admission->setActiveReferralTeamId($GLOBALS['CASE_MANAGERS_TEAM']);
-                    $admissionModified = true;
-                }
+                $admission->setActiveReferralId($referral->getId());
+                $admission->setActiveReferralTeamId($GLOBALS['CASE_MANAGERS_TEAM']);
+                $admissionModified = true;
             }
             if ($admissionModified) {
                 $admission->save();
@@ -742,9 +745,10 @@ class ServiceFunctions {
      *
      * @param APIAdmission $admission
      * @param KangxinPatientInfo $kxEpisodeInfo
+     * @param APIUser $referral
      * @return APIForm
      */
-    private function updateEpisodeData($admission, $kxEpisodeInfo) {
+    private function updateEpisodeData($admission, $kxEpisodeInfo, $referral) {
         $filter = new TaskFilter();
         $filter->setTaskCodes(self::PATIENT_HISTORY_TASK_CODE);
         $episodeList = $admission->getTaskList(1, 0, $filter);
@@ -1070,6 +1074,22 @@ class ServiceFunctions {
             $this->apiLK->form_set_all_answers($episodeInfoForm->getId(), $arrQuestions, true);
         }
 
+        if ($referral) {
+            // Assign the Task to the referral of the Admission (if not assigned yet)
+            foreach ($episodeTask->getAssignments() as $assignment) {
+                if ($assignment->getUserId() == $referral->getId() && ($assignment->getRoleId() == APIRole::CASE_MANAGER)) {
+                    $alreadyAssigned = true;
+                    break;
+                }
+            }
+
+            if (!$alreadyAssigned) {
+                $episodeTask->clearAssignments();
+                $assignment = new APITaskAssignment(APIRole::CASE_MANAGER, $GLOBALS['CASE_MANAGERS_TEAM'], $referral->getId());
+                $episodeTask->addAssignments($assignment);
+            }
+        }
+
         if ($kxEpisodeInfo->getAdmissionTime()) {
             $dateParts = explode(' ', $kxEpisodeInfo->getAdmissionTime());
             $date = $dateParts[0];
@@ -1077,8 +1097,9 @@ class ServiceFunctions {
             $episodeTask->setDate($date);
             $episodeTask->setHour($time);
             $episodeTask->setLocked(true);
-            $episodeTask->save();
         }
+
+        $episodeTask->save();
 
         return $episodeInfoForm;
     }
@@ -1194,17 +1215,17 @@ class ServiceFunctions {
             // Assign the Task to the operation doctor
             if ($procedure->getOperationDoctorCode()) {
                 $operationDoctor = $this->createProfessional($procedure->getOperationDoctorCode(), $procedure->getOperationDoctorName(),
-                        $GLOBALS['SURGEONS_TEAM'], APIRole::CASE_MANAGER);
+                        $GLOBALS['SURGEONS_TEAM'], APIRole::STAFF);
                 $alreadyAssigned = false;
                 foreach ($task->getAssignments() as $assignment) {
-                    if ($assignment->getUserId() == $operationDoctor->getId()) {
+                    if ($assignment->getUserId() == $operationDoctor->getId() && ($assignment->getRoleId() == APIRole::STAFF)) {
                         $alreadyAssigned = true;
                         break;
                     }
                 }
                 if (!$alreadyAssigned) {
                     $task->clearAssignments();
-                    $assignment = new APITaskAssignment(APIRole::CASE_MANAGER, $GLOBALS['SURGEONS_TEAM'], $operationDoctor->getId());
+                    $assignment = new APITaskAssignment(APIRole::STAFF, $GLOBALS['SURGEONS_TEAM'], $operationDoctor->getId());
                     $task->addAssignments($assignment);
                 }
             }
