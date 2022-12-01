@@ -9,6 +9,9 @@ class ServiceFunctions {
     /** @var KangxinAPI */
     private $apiKangxin;
 
+    /** @var APIUser[] List of professionals cached in memory */
+    private $professionals = [];
+
     /* Other Constants */
     const PATIENT_HISTORY_TASK_CODE = 'KANGXIN_IMPORT';
     const EPISODE_FORM_CODE = 'KANGXIN_IMPORT_FORM';
@@ -356,8 +359,11 @@ class ServiceFunctions {
                 $isNewEpisode = false;
                 ServiceLogger::getInstance()->debug('Using existing Admission for patient in Kangxin Admissions care plan', 2);
             }
+
             $episodeInfoForm = $this->updateEpisodeData($admission, $kxEpisodeInfo);
             $this->updateOperationTasks($admission, $kxEpisodeInfo);
+
+            $admissionModified = false;
             if ($kxEpisodeInfo->getDischargeTime()) {
                 // Discharge the Admission if necessary
                 if ($admission->getStatus() != APIAdmission::STATUS_DISCHARGED) {
@@ -366,8 +372,22 @@ class ServiceFunctions {
                         $admission->getDischargeDate() != $kxEpisodeInfo->getDischargeTime()) {
                     // The ADMISSION was discharged, but the date has changed
                     $admission->setDischargeDate($kxEpisodeInfo->getDischargeTime());
-                    $admission->save();
+                    $admissionModified = true;
                 }
+            }
+            if (!$admission->getActiveReferralId() && $kxEpisodeInfo->getDoctorCode()) {
+                /*
+                 * The Admission does not have a referral assigned, but we know the doctor assigned to the episode, so we can assign the referral
+                 */
+                if ($referral = $this->createProfessional($kxEpisodeInfo->getDoctorCode(), $kxEpisodeInfo->getDoctorName(),
+                        $GLOBALS['CASE_MANAGERS_TEAM'], APIRole::CASE_MANAGER)) {
+                    $admission->setActiveReferralId($referral->getId());
+                    $admission->setActiveReferralTeamId($GLOBALS['CASE_MANAGERS_TEAM']);
+                    $admissionModified = true;
+                }
+            }
+            if ($admissionModified) {
+                $admission->save();
             }
 
             $isNewFollowupAdmission = false;
@@ -447,7 +467,7 @@ class ServiceFunctions {
         $searchCondition->identifier = new StdClass();
         $searchCondition->identifier->code = $GLOBALS['PATIENT_IDENTIFIER'];
         $searchCondition->identifier->value = $importInfo->getSickId();
-        $searchCondition->identifier->team = $GLOBALS['PATIENT_IDENTIFIER_TEAM'];
+        $searchCondition->identifier->team = $GLOBALS['HOSPITAL_TEAM'];
         $found = $this->apiLK->case_search(json_encode($searchCondition));
         if (!empty($found)) {
             $patientId = $found[0]->getId();
@@ -481,8 +501,9 @@ class ServiceFunctions {
             $contactInfo->addIdentifier($nationalId);
         }
         if ($importInfo->getSickId()) {
+            // Add the internal ID of the patient in Kangxin Hospital as an IDENTIFIER object in Linkcare platform
             $sickId = new APIIdentifier($GLOBALS['PATIENT_IDENTIFIER'], $importInfo->getSickId());
-            $sickId->setTeamId($GLOBALS['PATIENT_IDENTIFIER_TEAM']);
+            $sickId->setTeamId($GLOBALS['HOSPITAL_TEAM']);
             $contactInfo->addIdentifier($sickId);
         }
 
@@ -492,6 +513,53 @@ class ServiceFunctions {
             $patientId = $this->apiLK->case_insert($contactInfo, $subscription ? $subscription->getId() : null, true);
         }
         return $this->apiLK->case_get($patientId);
+    }
+
+    /**
+     *
+     * @param APIUser $employeeRef
+     * @param string $name
+     * @param string $roleId
+     * @return APIUser
+     */
+    private function createProfessional($employeeRef, $name, $teamId, $roleId) {
+        if (isNullOrEmpty($employeeRef)) {
+            return null;
+        }
+        if (array_key_exists($employeeRef, $this->professionals)) {
+            // Cached in memory. Not necessary to update or insert the professional
+            return $this->professionals[$employeeRef];
+        }
+        // Check if there already exists a professional with the Kangxin employee Id
+        $searchCondition = new StdClass();
+        $searchCondition->identifier = new StdClass();
+        $searchCondition->identifier->code = $GLOBALS['PROFESSIONAL_IDENTIFIER'];
+        $searchCondition->identifier->value = $employeeRef;
+        $searchCondition->identifier->team = $GLOBALS['HOSPITAL_TEAM'];
+        $found = $this->apiLK->user_search(json_encode($searchCondition));
+        if (!empty($found)) {
+            $userId = $found[0]->getId();
+        }
+
+        $contactInfo = new APIContact();
+        if ($name) {
+            $contactInfo->setCompleteName($name);
+        }
+
+        // Add the internal ID of the professional in Kangxin Hospital as an IDENTIFIER object in Linkcare platform
+        $employeeId = new APIIdentifier($GLOBALS['PROFESSIONAL_IDENTIFIER'], $employeeRef);
+        $employeeId->setTeamId($GLOBALS['HOSPITAL_TEAM']);
+        $contactInfo->addIdentifier($employeeId);
+
+        if (!$userId) {
+            $userId = $this->apiLK->team_user_insert($contactInfo, $teamId, $roleId);
+        } else {
+            $userId = $this->apiLK->team_member_add($contactInfo, $teamId, $userId, 'USER', $roleId);
+        }
+
+        $professional = $this->apiLK->user_get($userId);
+        $this->professionals[$employeeRef] = $professional;
+        return $professional;
     }
 
     /**
@@ -1122,13 +1190,33 @@ class ServiceFunctions {
             $dateParts = explode(' ', $procedure->getOperationDate());
             $date = $dateParts[0];
             $time = count($dateParts) > 1 ? $dateParts[1] : null;
-            $task->setLocked(true);
+
+            // Assign the Task to the operation doctor
+            if ($procedure->getOperationDoctorCode()) {
+                $operationDoctor = $this->createProfessional($procedure->getOperationDoctorCode(), $procedure->getOperationDoctorName(),
+                        $GLOBALS['SURGEONS_TEAM'], APIRole::CASE_MANAGER);
+                $alreadyAssigned = false;
+                foreach ($task->getAssignments() as $assignment) {
+                    if ($assignment->getUserId() == $operationDoctor->getId()) {
+                        $alreadyAssigned = true;
+                        break;
+                    }
+                }
+                if (!$alreadyAssigned) {
+                    $task->clearAssignments();
+                    $assignment = new APITaskAssignment(APIRole::CASE_MANAGER, $GLOBALS['SURGEONS_TEAM'], $operationDoctor->getId());
+                    $task->addAssignments($assignment);
+                }
+            }
+
+            if (!$task->addAssignments($assignment))
+                $task->setLocked(true);
 
             if ($task->getDate() != $date || (!$time && $task->getHour() != $time)) {
                 $task->setDate($procedure->getOperationDate());
                 $task->setHour($time);
-                $task->save();
             }
+            $task->save();
         }
     }
 

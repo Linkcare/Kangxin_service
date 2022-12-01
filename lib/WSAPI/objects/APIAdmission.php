@@ -22,6 +22,10 @@ class APIAdmission {
     private $status;
     private $dateToDisplay;
     private $ageToDisplay;
+    /** @var string[] */
+    private $referralHistory;
+    private $newReferralId = null;
+    private $newReferralTeamId = null;
     /** @var APISubscription */
     private $subscription;
     /** @var APIAdmissionPerformance */
@@ -47,10 +51,14 @@ class APIAdmission {
         if (!$admission) {
             $admission = new APIAdmission();
         }
-        $admission->id = (string) $xmlNode->ref;
+
+        $admission->id = NullableString($xmlNode->ref);
         $admission->status = NullableString($xmlNode->status); // admission_create returns the status at this level
-        $admission->isNewAdmission = $xmlNode->type != "EXIST";
-        if ($xmlNode->data) {
+        $admission->isNewAdmission = NullableString($xmlNode->type) != "EXIST";
+        $admission->newReferralId = null;
+        $admission->newReferralTeamId = null;
+
+        if (isset($xmlNode->data)) {
             if ($xmlNode->data->case) {
                 $admission->caseId = NullableString($xmlNode->data->case->ref);
                 $admission->case = APISubscription::parseXML($xmlNode->data->case);
@@ -66,12 +74,20 @@ class APIAdmission {
             }
             $admission->dateToDisplay = NullableString($xmlNode->data->date_to_display);
             $admission->ageToDisplay = NullableInt($xmlNode->data->age_to_display);
-            if ($xmlNode->data->subscription) {
+            if (isset($xmlNode->data->subscription)) {
                 $admission->subscription = APISubscription::parseXML($xmlNode->data->subscription);
             }
-            if ($xmlNode->data->referrals) {
+            if (isset($xmlNode->data->referrals)) {
                 foreach ($xmlNode->data->referrals->referral as $referralNode) {
-                    $admission->subscription = APISubscription::parseXML($xmlNode->data->subscription);
+                    // We only store the most recent referral
+                    $referralInfo = ['date' => NullableString($referralNode->date)];
+                    if (isset($referralNode->professional) && isset($referralNode->professional->ref)) {
+                        $referralInfo['professionalId'] = NullableString($referralNode->professional->ref);
+                    }
+                    if (isset($referralNode->team) && isset($referralNode->team->ref)) {
+                        $referralInfo['teamId'] = NullableString($referralNode->team->ref);
+                    }
+                    $admission->referralHistory[] = $referralInfo;
                 }
             }
             if ($xmlNode->performance) {
@@ -213,6 +229,40 @@ class APIAdmission {
         return $this->performance;
     }
 
+    /**
+     * Returns the reference of the active Referral user
+     *
+     * @return string
+     */
+    public function getActiveReferralId() {
+        if ($this->newReferralId) {
+            return $this->newReferralId;
+        }
+
+        if (!empty($this->referralHistory)) {
+            $lastReferralInfo = reset($this->referralHistory);
+            return $lastReferralInfo['professionalId'];
+        }
+        return null;
+    }
+
+    /**
+     * Returns the reference of the active Referral team
+     *
+     * @return string
+     */
+    public function getActiveReferralTeamId() {
+        if ($this->newReferralTeamId) {
+            return $this->newReferralTeamId;
+        }
+
+        if (!empty($this->referralHistory)) {
+            $lastReferralInfo = reset($this->referralHistory);
+            return $lastReferralInfo['teamId'];
+        }
+        return null;
+    }
+
     /*
      * **********************************
      * SETTERS
@@ -264,6 +314,14 @@ class APIAdmission {
      */
     public function setRejectedDate($value) {
         $this->rejectedDate = $value;
+    }
+
+    public function setActiveReferralId($professionalId) {
+        $this->newReferralId = $professionalId;
+    }
+
+    public function setActiveReferralTeamId($teamId) {
+        $this->newReferralTeamId = $teamId;
     }
 
     /*
@@ -374,6 +432,18 @@ class APIAdmission {
         }
         if ($this->getRejectedDate() !== null) {
             $xml->createChildNode($dataNode, "rejected_date", $this->getRejectedDate());
+        }
+
+        if ($this->newReferralId || $this->newReferralTeamId) {
+            $referralNode = $xml->createChildNode($dataNode, 'referral');
+            if ($this->newReferralId) {
+                $professionalNode = $xml->createChildNode($referralNode, 'professional');
+                $xml->createChildNode($professionalNode, 'ref', $this->newReferralId);
+            }
+            if ($this->newReferralTeamId) {
+                $teamNode = $xml->createChildNode($referralNode, 'team');
+                $xml->createChildNode($teamNode, 'ref', $this->newReferralTeamId);
+            }
         }
     }
 }

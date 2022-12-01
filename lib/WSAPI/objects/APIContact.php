@@ -400,7 +400,14 @@ class APIContact {
         }
 
         $xml->createChildNode($parentNode, "ref", $this->getId());
+        if ($this->getUsername() !== null) {
+            $xml->createChildNode($parentNode, "username", $this->getUsername());
+        }
+
         $dataNode = $xml->createChildNode($parentNode, "data");
+        if ($this->getUsername() !== null) {
+            $xml->createChildNode($dataNode, "username", $this->getUsername());
+        }
         if ($this->getAge() !== null) {
             $xml->createChildNode($dataNode, "age", $this->getAge());
         }

@@ -415,7 +415,22 @@ class KangxinPatientInfo {
      *
      * @return string
      */
+    public function getDoctorName() {
+        if (isNullOrEmpty($this->doctor)) {
+            return null;
+        }
+        $parts = explode('/', $this->doctor);
+        return $parts[0];
+    }
+
+    /**
+     *
+     * @return string
+     */
     public function getDoctorCode() {
+        if (isNullOrEmpty($this->doctor)) {
+            return null;
+        }
         $parts = explode('/', $this->doctor);
         if (count($parts) > 1) {
             return $parts[1];

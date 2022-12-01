@@ -25,7 +25,7 @@ try {
             $GLOBALS['INTEGRATION_DBPASSWORD']);
 
     // Connect as service user, reusing existing session if possible
-    apiConnect(null, $GLOBALS['SERVICE_USER'], $GLOBALS['SERVICE_PASSWORD'], 47, $GLOBALS['SERVICE_TEAM'], true, $GLOBALS['LANGUAGE']);
+    apiConnect(null, $GLOBALS['SERVICE_USER'], $GLOBALS['SERVICE_PASSWORD'], APIRole::SERVICE, $GLOBALS['SERVICE_TEAM'], true, $GLOBALS['LANGUAGE']);
     $connectionSuccessful = true;
 } catch (Exception $e) {
     $serviceResponse->setCode(ServiceResponse::ERROR);

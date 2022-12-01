@@ -205,6 +205,90 @@ class LinkcareSoapAPI {
     }
 
     /**
+     * Creates a new USER (Professional)
+     * The value returned is the ID of the new USER
+     *
+     * @param APIContact $contact
+     * @param string $teamId
+     * @throws APIException
+     * @return string
+     */
+    function user_insert($contact, $teamId = null) {
+        $xml = new XMLHelper('user');
+        $contact->toXML($xml, null);
+
+        $params = ['user' => $xml->toString()];
+        $resp = $this->invoke('user_insert', $params);
+        if (!$resp->getErrorCode()) {
+            if ($result = simplexml_load_string($resp->getResult())) {
+                $userId = NullableString($result->user);
+            }
+        }
+
+        return $userId;
+    }
+
+    /**
+     *
+     * @param string $userId
+     * @throws APIException
+     * @return APIUser
+     */
+    public function user_get($userId) {
+        $case = null;
+        $params = ["user" => $userId];
+        $resp = $this->invoke('user_get', $params);
+        if (!$resp->getErrorCode()) {
+            if ($found = simplexml_load_string($resp->getResult())) {
+                $case = APIUser::parseXML($found);
+            }
+        }
+
+        return $case;
+    }
+
+    /**
+     *
+     * @param string $userId
+     * @param string $teamId
+     * @throws APIException
+     * @return APIContact
+     */
+    public function user_get_contact($userId, $teamId = null) {
+        $contact = null;
+        $params = ["user" => $userId, "team" => $teamId];
+        $resp = $this->invoke('user_get_contact', $params);
+        if (!$resp->getErrorCode()) {
+            if ($found = simplexml_load_string($resp->getResult())) {
+                $contact = APIContact::parseXML($found);
+            }
+        }
+
+        return $contact;
+    }
+
+    /**
+     *
+     * @param string $searchText
+     * @throws APIException
+     * @return APIUser[];
+     */
+    public function user_search($searchText = '') {
+        $caseList = [];
+        $params = ['search_str' => $searchText];
+        $resp = $this->invoke('user_search', $params);
+        if (!$resp->getErrorCode()) {
+            if ($searchResults = simplexml_load_string($resp->getResult())) {
+                foreach ($searchResults->user as $userNode) {
+                    $caseList[] = APIUser::parseXML($userNode);
+                }
+            }
+        }
+
+        return array_filter($caseList);
+    }
+
+    /**
      * Get information about a TEAM
      *
      * @param string $teamId
@@ -213,7 +297,7 @@ class LinkcareSoapAPI {
      */
     public function team_get($teamId) {
         $team = null;
-        $params = ["team" => $teamId];
+        $params = ['team' => $teamId];
         $resp = $this->invoke('team_get', $params);
         if (!$resp->getErrorCode()) {
             if ($found = simplexml_load_string($resp->getResult())) {
@@ -222,6 +306,54 @@ class LinkcareSoapAPI {
         }
 
         return $team;
+    }
+
+    /**
+     * Adds a new User (Professional) as member of a Team
+     * The value returned is the ID of the User
+     *
+     * @param APIContact $contact
+     * @param string $teamId
+     * @param string $roleId
+     * @throws APIException
+     * @return string
+     */
+    function team_user_insert($contact, $teamId, $roleId = null) {
+        $xml = new XMLHelper('user');
+        $contact->toXML($xml, null);
+
+        $params = ['user' => $xml->toString(), 'team' => $teamId, 'roles' => $roleId];
+        $resp = $this->invoke('team_user_insert', $params);
+        if (!$resp->getErrorCode()) {
+            if ($result = simplexml_load_string($resp->getResult())) {
+                $userId = NullableString($result->user);
+            }
+        }
+
+        return $userId;
+    }
+
+    /**
+     * Adds a new User (Professional) as member of a Team
+     * The value returned is the ID of the User
+     *
+     * @param APIContact $contact
+     * @param string $teamId
+     * @param string $roleId
+     * @throws APIException
+     * @return string
+     */
+    function team_member_add($contact, $teamId, $memberId, $memberType = 'USER', $roleId = null) {
+        $params = ['team' => $teamId, 'member' => $memberId, 'type' => $memberType, 'roles' => $roleId];
+        $memberId = null;
+        $resp = $this->invoke('team_member_add', $params);
+        if (!$resp->getErrorCode()) {
+            if ($result = simplexml_load_string($resp->getResult())) {
+                $memberId = NullableString($result->ref);
+            }
+        }
+
+        return $memberId;
     }
 
     /**
@@ -523,7 +655,7 @@ class LinkcareSoapAPI {
         $resp = $this->invoke('case_insert', $params);
         if (!$resp->getErrorCode()) {
             if ($result = simplexml_load_string($resp->getResult())) {
-                $caseId = NullableInt($result->case);
+                $caseId = NullableString($result->case);
             }
         }
 

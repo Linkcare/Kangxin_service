@@ -28,6 +28,7 @@ class APITask {
     private $forms = null;
     /** @var LinkcareSoapAPI $api */
     private $api;
+    private $modified = true;
 
     public function __construct() {
         $this->api = LinkcareSoapAPI::getInstance();
@@ -86,6 +87,8 @@ class APITask {
             }
             $task->forms = array_filter($forms);
         }
+
+        $task->modified = false;
         return $task;
     }
 
@@ -217,6 +220,14 @@ class APITask {
         return $this->caseId;
     }
 
+    /**
+     *
+     * @return APITaskAssignment[]
+     */
+    public function getAssignments() {
+        return $this->assignments;
+    }
+
     /*
      * **********************************
      * SETTERS
@@ -230,7 +241,11 @@ class APITask {
         if ($date) {
             $date = explode(' ', $date)[0]; // Remove time part
         }
-        $this->date = $date;
+
+        if ($this->date !== $date) {
+            $this->date = $date;
+            $this->modified = true;
+        }
     }
 
     /**
@@ -238,7 +253,10 @@ class APITask {
      * @param string $date
      */
     public function setHour($time) {
-        $this->hour = $time;
+        if ($this->hour !== $time) {
+            $this->hour = $time;
+            $this->modified = true;
+        }
     }
 
     /**
@@ -246,7 +264,10 @@ class APITask {
      * @param boolean $locked
      */
     public function setLocked($locked) {
-        $this->locked = $locked;
+        if ($this->locked !== $locked) {
+            $this->locked = $locked;
+            $this->modified = true;
+        }
     }
 
     /**
@@ -259,6 +280,7 @@ class APITask {
             return;
         }
         $this->assignments[] = $assignment;
+        $this->modified = true;
     }
 
     /*
@@ -270,7 +292,11 @@ class APITask {
      * Removes all the assignments of the TASK
      */
     public function clearAssignments() {
+        if (empty($this->assignments)) {
+            return;
+        }
         $this->assignments = [];
+        $this->modified = true;
     }
 
     /**
@@ -311,7 +337,9 @@ class APITask {
     /**
      */
     public function save() {
-        $this->api->task_set($this);
+        if ($this->modified) {
+            $this->api->task_set($this);
+        }
     }
 
     /**

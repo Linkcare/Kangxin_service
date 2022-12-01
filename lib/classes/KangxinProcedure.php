@@ -78,7 +78,22 @@ class KangxinProcedure {
      *
      * @return string
      */
+    public function getOperationDoctorName() {
+        if (isNullOrEmpty($this->operationDoctor)) {
+            return null;
+        }
+        $parts = explode('/', $this->operationDoctor);
+        return $parts[0];
+    }
+
+    /**
+     *
+     * @return string
+     */
     public function getOperationDoctorCode() {
+        if (isNullOrEmpty($this->operationDoctor)) {
+            return null;
+        }
         $parts = explode('/', $this->operationDoctor);
         if (count($parts) > 1) {
             return $parts[1];

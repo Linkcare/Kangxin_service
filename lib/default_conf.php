@@ -32,6 +32,20 @@ $GLOBALS['KANGXIN_EPISODES_PROGRAM_CODE'] = 'KANGXIN_ADMISSIONS';
 $GLOBALS['DISCHARGE_FOLLOWUP_PROGRAM_CODE'] = 'PCI_DCH';
 /* Team code of the Subscription owner */
 $GLOBALS['TEAM_CODE'] = 'xxxxx';
+
+/*
+ * Team where the Kangxin Case Managers will be added as members.
+ * The Case Manager is the doctor assigned to the episode
+ * This doctors will be registered in the Linkcare platform and added as "Case Manager" members of the Team indicated in this configuration parameter
+ */
+$GLOBALS['CASE_MANAGERS_TEAM'] = 'yyyyy';
+/*
+ * Team where the Kangxin Surgeons will be added as members.
+ * The Surgeon is the doctor assigned to an operation of the episode
+ * This doctors will be registered in the Linkcare platform and added as "Case Manager" members of the Team indicated in this configuration parameter
+ */
+$GLOBALS['SURGEONS_TEAM'] = 'yyyyy';
+
 /*
  * Date of the oldest procedure that will be requested to the Kangxin API. This value normally is only used during
  * the first load, because once the DB is feeded with an initial number of records, tha date of the last record will be
@@ -40,16 +54,16 @@ $GLOBALS['TEAM_CODE'] = 'xxxxx';
 $GLOBALS['MINIMUM_DATE'] = '2022-10-01';
 
 /*
- * Threshold date to discharge the Admission in the Linkcare platform. All records received with a date of discharge (in the Kangxin Hospital) older
- * that the specified in this parameter will be automatically discharged in the Linkcare platform
+ * Threshold date to create an Admission in the "Discharge Follow-up" PROGRAM even if the episode is discharged at Kangxin Hospital after the selected
+ * date
  */
 $GLOBALS['DISCHARGE_DATE_THRESHOLD'] = '2022-10-01';
 
 /*
- * The Patient Identifier is not globally unique. It is only unique in a particular Hospital.
- * The following configuration variable defines the Team for which the Patient Identifier (the Kangxin Hospital Team)
+ * The Patient and Professional identifiers are not globally unique. They are only unique in a particular Hospital.
+ * The following configuration variable defines the Team associated to the hospital organization
  */
-$GLOBALS['PATIENT_IDENTIFIER_TEAM'] = 'KANGXIN';
+$GLOBALS['HOSPITAL_TEAM'] = 'KANGXIN';
 
 /*
  * Database credentials
@@ -144,5 +158,6 @@ date_default_timezone_set($GLOBALS['DEFAULT_TIMEZONE']);
  * (tipically a Hospital)
  */
 $GLOBALS['PATIENT_IDENTIFIER'] = 'PARTICIPANT_REF';
+$GLOBALS['PROFESSIONAL_IDENTIFIER'] = 'EMPLOYEE_REF';
 
 
