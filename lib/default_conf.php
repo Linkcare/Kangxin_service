@@ -30,6 +30,12 @@ $GLOBALS['KANGXIN_EPISODES_PROGRAM_CODE'] = 'KANGXIN_ADMISSIONS';
  * SUBSCRIPTION. The goal is to let a Case Manager decide whether the patient must be enrolled in any Post Intervention Follow-up PROGRAM
  */
 $GLOBALS['DISCHARGE_FOLLOWUP_PROGRAM_CODE'] = 'PCI_DCH';
+/*
+ * Day interval to reject ADMISSIONS that have status 'enrolled' in the "DISCHARGE FOLLOW UP" PROGRAM but discharged in the "KANGXIN EPISODES"
+ * PROGRAM.
+ * If the discharge ocurred before the configured period, the enrolled ADMISSION will be rejected
+ */
+$GLOBALS['REJECT_ENROLLED_AFTER_DAYS'] = 2;
 /* Team code of the Subscription owner */
 $GLOBALS['TEAM_CODE'] = 'xxxxx';
 

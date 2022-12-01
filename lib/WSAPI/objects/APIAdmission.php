@@ -61,7 +61,7 @@ class APIAdmission {
         if (isset($xmlNode->data)) {
             if ($xmlNode->data->case) {
                 $admission->caseId = NullableString($xmlNode->data->case->ref);
-                $admission->case = APISubscription::parseXML($xmlNode->data->case);
+                $admission->case = APICase::parseXML($xmlNode->data->case);
             }
             $admission->enrolDate = NullableString($xmlNode->data->enrol_date);
             $admission->admissionDate = NullableString($xmlNode->data->admission_date);

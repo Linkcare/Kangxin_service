@@ -399,6 +399,40 @@ class LinkcareSoapAPI {
 
     /**
      *
+     * @param string $programId
+     * @param string $AdmissionStatus
+     * @param string $scope
+     * @param string $searchStr
+     * @param int $maxRes
+     * @param int $offset
+     * @param string $sortBy
+     * @param boolean $ascending
+     * @param string $subscriptionFilter
+     * @param string $subscriptionId
+     * @throws APIException
+     * @return APIAdmission[]
+     */
+    public function admission_list_program($programId, $admissionStatus = 'ACTIVE', $scope = null, $searchStr = null, $maxRes = 100, $offset = 0,
+            $sortBy = null, $ascending = true, $subscriptionFilter = 'ALL', $subscriptionId = null) {
+        $admissionList = [];
+
+        $params = ['program' => $programId, 'status' => $admissionStatus, 'scope' => $scope, 'search_str' => $searchStr, 'max_res' => $maxRes,
+                'offset' => $offset, 'sort' => $sortBy, 'direction' => $ascending ? 'asc' : 'desc', 'filter' => $subscriptionFilter,
+                'subscription' => $subscriptionId];
+        $resp = $this->invoke('admission_list_program', $params);
+        if (!$resp->getErrorCode()) {
+            if ($found = simplexml_load_string($resp->getResult())) {
+                foreach ($found->admission as $taskNode) {
+                    $admissionList[] = APIAdmission::parseXML($taskNode);
+                }
+            }
+        }
+
+        return array_filter($admissionList);
+    }
+
+    /**
+     *
      * @param int $case
      * @param int $subscription
      * @param string $date
@@ -501,6 +535,26 @@ class LinkcareSoapAPI {
     function admission_discharge($admissionId, $type = null, $date = null, $admission = null) {
         $params = ["admission" => $admissionId, 'type' => $type, 'date' => $date];
         $resp = $this->invoke('admission_discharge', $params);
+        if (!$resp->getErrorCode()) {
+            if ($res = simplexml_load_string($resp->getResult())) {
+                $admission = APIAdmission::parseXML($res, $admission);
+            }
+        }
+
+        return $admission;
+    }
+
+    /**
+     *
+     * @param int $admissionId
+     * @param string $type of reject
+     * @param string $date (optional) date of the reject. By default is the current datetime
+     * @param APIAdmission $admission (optional) if provided, the data will be stored in this APIAdmission object
+     * @throws APIException
+     */
+    function admission_reject($admissionId, $type = null, $date = null, $admission = null) {
+        $params = ["admission" => $admissionId, 'type' => $type, 'date' => $date];
+        $resp = $this->invoke('admission_reject', $params);
         if (!$resp->getErrorCode()) {
             if ($res = simplexml_load_string($resp->getResult())) {
                 $admission = APIAdmission::parseXML($res, $admission);
@@ -992,7 +1046,7 @@ class LinkcareSoapAPI {
             $result = $this->client->__soapCall($functionName, $args);
         } catch (SoapFault $fault) {
             $errorMsg = "ERROR: SOAP Fault invoking function $functionName: (faultcode: {$fault->faultcode}, faultstring: {$fault->faultstring})";
-            return new APIResponse(null, 'SOAP_FAULT', $errorMsg);
+            throw new APIException('SOAP_FAULT', $errorMsg);
         }
 
         if ($returnRaw) {

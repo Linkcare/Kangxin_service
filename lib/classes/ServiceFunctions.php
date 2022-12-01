@@ -122,7 +122,7 @@ class ServiceFunctions {
     }
 
     /**
-     * Sends a request to Kangxin Hospital to retrieve the list of patients that should be imported in the Linkcare Platform
+     * Imports in the Linkcare Platform al the changed records received from Kangxin
      *
      * @param ProcessHistory $processHistory
      * @return ServiceResponse
@@ -269,6 +269,109 @@ class ServiceFunctions {
 
         $serviceResponse->setCode($outputStatus);
         $serviceResponse->setMessage($outputMessage);
+        return $serviceResponse;
+    }
+
+    /**
+     * Checks whether there exist Admissions in stage "Enroll" in the "DISCHARGE FOLLOW UP" PROGRAM and rejects them if the corresponding Kangxin
+     * Admission was discharged N days ago (number of days is configurable)
+     *
+     * @param ProcessHistory $processHistory
+     * @return ServiceResponse
+     */
+    public function reviewFollowupEnrolled($processHistory) {
+        $serviceResponse = new ServiceResponse(ServiceResponse::IDLE, 'Process started');
+
+        // Verify the existence of the required SUBSCRIPTIONS
+        try {
+            // Locate the SUBSCRIPTION for storing episode information
+            $kxEpisodesSubscription = $this->apiLK->subscription_get($GLOBALS['KANGXIN_EPISODES_PROGRAM_CODE'], $GLOBALS['TEAM_CODE']);
+        } catch (Exception $e) {
+            $serviceResponse->setCode(ServiceResponse::ERROR);
+            $serviceResponse->setMessage(
+                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['KANGXIN_EPISODES_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['TEAM_CODE'] .
+                    ') FOR IMPORTING PATIENTS: ' . $e->getMessage());
+            $processHistory->addLog($serviceResponse->getMessage());
+            return $serviceResponse;
+        }
+
+        try {
+            // Locate the SUBSCRIPTION of the "Discharge followup" PROGRAM for creating new ADMISSIONS of a patient
+            $dschFollowupSubscription = $this->apiLK->subscription_get($GLOBALS['DISCHARGE_FOLLOWUP_PROGRAM_CODE'], $GLOBALS['TEAM_CODE']);
+        } catch (Exception $e) {
+            $serviceResponse->setCode(ServiceResponse::ERROR);
+            $serviceResponse->setMessage(
+                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['DISCHARGE_FOLLOWUP_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['TEAM_CODE'] .
+                    ') FOR DISCHARGE FOLLOWUP PATIENTS: ' . $e->getMessage());
+            $processHistory->addLog($serviceResponse->getMessage());
+            return $serviceResponse;
+        }
+
+        $admissions = $this->apiLK->admission_list_program($dschFollowupSubscription->getProgram()->getId(), 'ENROLLED', null, null, 1000, 0,
+                'enrol_date', 'asc', 'ALL', $dschFollowupSubscription->getId());
+
+        $rejectFailed = 0;
+        $numRejected = 0;
+        $remainEnrolled = 0;
+        foreach ($admissions as $adm) {
+            ServiceLogger::getInstance()->debug(
+                    'Reviewing admission ' . $adm->getId() . ' (patient: ' . $adm->getCase()->getNickname() . '). Enrol date: ' . $adm->getEnrolDate());
+            $dayDiff = (strtotime(currentDate($GLOBALS['DEFAULT_TIMEZONE'])) - strtotime($adm->getEnrolDate())) / 86400;
+            if ($dayDiff < $GLOBALS['REJECT_ENROLLED_AFTER_DAYS']) {
+                $remainEnrolled++;
+                continue;
+            }
+            /*
+             * Find the last Admission of the patient in the KANGXIN episodes PROGRAM
+             * If it is discharged, then check when was it discharged, and if it happened before a predetermined time lapse.
+             */
+            $patientAdmissions = $this->apiLK->case_admission_list($adm->getCaseId(), true, $kxEpisodesSubscription->getId());
+            $lastDischarge = null;
+            foreach ($patientAdmissions as $kxAdm) {
+                if (in_array($kxAdm->getStatus(), [APIAdmission::STATUS_ACTIVE, APIAdmission::STATUS_ENROLLED])) {
+                    // The patient has an active ADMISSION in the "KANGXIN ADMISSIONS" PROGRAM. It is not necessary to reject the enrolled ADMISSION
+                    $lastDischarge = null;
+                    break;
+                } elseif ($kxAdm->getStatus() == APIAdmission::STATUS_DISCHARGED) {
+                    if (!$lastDischarge || $lastDischarge < $kxAdm->getDischargeDate()) {
+                        $lastDischarge = $kxAdm->getDischargeDate();
+                    }
+                }
+            }
+            if ($lastDischarge) {
+                $dayDiff = (strtotime(currentDate($GLOBALS['DEFAULT_TIMEZONE'])) - strtotime($lastDischarge)) / 86400;
+                if ($dayDiff > $GLOBALS['REJECT_ENROLLED_AFTER_DAYS']) {
+                    try {
+                        $this->apiLK->admission_reject($adm->getId());
+                        $numRejected++;
+                    } catch (Exception $e) {
+                        $rejectFailed++;
+                        $errMsg = 'ERROR trying to reject the Admission ' . $adm->getId() . ' of the ' . $GLOBALS['DISCHARGE_FOLLOWUP_PROGRAM_CODE'] .
+                                ' Care Plan: ' . $e->getMessage();
+                        $processHistory->addLog($errMsg);
+                        ServiceLogger::getInstance()->error($errMsg);
+                    }
+                } else {
+                    $remainEnrolled++;
+                }
+            } else {
+                $remainEnrolled++;
+            }
+        }
+
+        $processed = count($admissions);
+        $outputMessage = "Total Processed: $processed, Remain enrolled: $remainEnrolled, Rejected: $numRejected, Failed: $rejectFailed";
+        if ($processed == 0) {
+            $outputStatus = ServiceResponse::IDLE;
+        } elseif ($rejectFailed > 0) {
+            $outputStatus = ServiceResponse::ERROR;
+        } else {
+            $outputStatus = ServiceResponse::SUCCESS;
+        }
+
+        $serviceResponse->setCode($outputStatus);
+        $serviceResponse->setMessage($outputMessage);
+
         return $serviceResponse;
     }
 

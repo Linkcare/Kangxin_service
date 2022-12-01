@@ -59,6 +59,11 @@ if ($connectionSuccessful) {
                     $service = new ServiceFunctions(LinkcareSoapAPI::getInstance(), KangxinAPI::getInstance());
                     $serviceResponse = $service->fetchKangxinRecords($processHistory);
                     break;
+                case 'review_followup_enrolled' :
+                    $logger->trace('CHECKING EXPIRED ENROLLMENTS IN DISCHARGE FOLLOWUP');
+                    $service = new ServiceFunctions(LinkcareSoapAPI::getInstance(), KangxinAPI::getInstance());
+                    $serviceResponse = $service->reviewFollowupEnrolled($processHistory);
+                    break;
                 default :
                     $serviceResponse->setCode(ServiceResponse::ERROR);
                     $serviceResponse->setMessage('function "' . $action . '" not implemented');
