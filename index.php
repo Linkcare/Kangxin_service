@@ -1,3 +1,6 @@
+<?php
+require_once ("lib/default_conf.php");
+?>
 <html>
     <head>
         <meta charset="UTF-8">
@@ -46,7 +49,8 @@
 	<body>	
 		<div class="container col-lg-12 col-md-12 col-sm-12">
 			<div style="text-align: center; margin-top: 20px; margin-bottom: 20px;">
-				<h3>KANGXIN HOSPITAL INTEGRATION SERVICE</h3>
+				<h3>KANGXIN HOSPITAL INTEGRATION SERVICE v<?php
+    echo $GLOBALS['VERSION']?></h3>
 			</div>
 			<div style="display: flex;">
 				<h5 style="text-decoration: underline;">Process status</h5>
