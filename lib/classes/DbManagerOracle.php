@@ -384,31 +384,6 @@ class DbManagerOracle extends DbManager {
         return $finalLength;
     }
 
-    function getColumnNames() {
-        if ($this->pdo) {
-            $total_column = $this->conn->fetchColumn();
-            for ($counter = 0; $counter <= $total_column; $counter++) {
-                $meta = $this->conn->getColumnMeta($counter);
-                $column[] = $meta['name'];
-            }
-            return $column;
-        } else {
-            $ncols = oci_num_fields($this->res);
-            for ($i = 1; $i <= $ncols; ++$i) {
-                $colnames[] = oci_field_name($this->res, $i);
-            }
-            return $colnames;
-        }
-    }
-
-    function getColumnTypes() {
-        $ncols = oci_num_fields($this->res);
-        for ($i = 1; $i <= $ncols; ++$i) {
-            $coltypes[] = oci_field_type($this->res, $i);
-        }
-        return $coltypes;
-    }
-
     function setAutocommit($autocommit) {}
 
     function begin_transaction() {

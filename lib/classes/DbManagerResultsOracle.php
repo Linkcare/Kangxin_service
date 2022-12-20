@@ -10,8 +10,6 @@ class DbManagerResultsOracle extends DbManagerResults {
         $this->rst = $pRst;
     }
 
-    function NRows() {}
-
     function Next() {
         if ($this->rst) {
             if ($this->pdo) {
@@ -54,40 +52,4 @@ class DbManagerResultsOracle extends DbManagerResults {
         $this->rs[$fieldName]->seek($startPos);
         return $this->rs[$fieldName]->read($length);
     }
-
-    function GetAllFields() {
-        return $this->rs;
-    }
-
-    function GetFieldNULL($fieldName, $scaped = true) {
-        if (trim($this->rs[$fieldName]) == "") {
-            return "NULL";
-        }
-        if ($this->rs[$fieldName] == null) {
-            return "NULL";
-        }
-        if ($scaped) /* 25/02/2005: Escapamos los caracteres conflictivos con HTML */ {
-            return ($this->scapeXMLChars($this->rs[$fieldName]));
-        } else {
-            return ($this->rs[$fieldName]);
-        }
-    }
-
-    function GetXML($fieldRoot) {}
-
-    function GetFieldAsString($fieldName) {}
-
-    function NumFields() {}
-
-    function FieldName($fieldNumber) {}
-
-    function scapeXMLChars($str) {}
-
-    function GetPlainField($fieldName) {}
-
-    function GoToRow($NumRow = 0) {}
-
-    function FreeRst() {}
-
-    function FilasAfectadas() {}
 }
