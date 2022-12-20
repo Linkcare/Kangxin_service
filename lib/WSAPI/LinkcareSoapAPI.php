@@ -699,13 +699,13 @@ class LinkcareSoapAPI {
      * @param int $subscriptionId
      * @param boolean $allowIncomplete
      * @throws APIException
-     * @return int
+     * @return APICase
      */
     function case_insert($contact, $subscriptionId = null, $allowIncomplete = false) {
         $xml = new XMLHelper("case");
         $contact->toXML($xml, null);
 
-        $params = ["case" => $xml->toString(), "subscription" => $subscriptionId, "allow_incomplete" => boolToText($allowIncomplete)];
+        $params = ['case' => $xml->toString(), 'subscription' => $subscriptionId, 'allow_incomplete' => boolToText($allowIncomplete)];
         $resp = $this->invoke('case_insert', $params);
         if (!$resp->getErrorCode()) {
             if ($result = simplexml_load_string($resp->getResult())) {
@@ -713,7 +713,8 @@ class LinkcareSoapAPI {
             }
         }
 
-        return $caseId;
+        $case = $caseId ? $this->case_get($caseId) : null;
+        return $case;
     }
 
     /**
@@ -768,8 +769,23 @@ class LinkcareSoapAPI {
 
         $contact->setId($caseId);
         $contact->toXML($xml, $xml->rootNode);
-        $params = ["case" => $xml->toString(), "admission" => $admissionId];
+        $params = ['case' => $xml->toString(), 'admission' => $admissionId];
         $this->invoke('case_set_contact', $params);
+    }
+
+    /**
+     * Set Case preferences
+     *
+     * @param APICase $case
+     * @param string $admissionId
+     * @throws APIException
+     */
+    public function case_set($case, $admissionId = null) {
+        $xml = new XMLHelper('case');
+
+        $case->toXML($xml, $xml->rootNode);
+        $params = ['case' => $xml->toString(), 'admission' => $admissionId];
+        $this->invoke('case_set', $params);
     }
 
     /**
@@ -778,7 +794,7 @@ class LinkcareSoapAPI {
      * @throws APIException
      */
     function case_delete($caseId) {
-        $params = ["case" => $caseId, "type" => "DELETE"];
+        $params = ['case' => $caseId, 'type' => 'DELETE'];
         $this->invoke('case_delete', $params);
     }
 

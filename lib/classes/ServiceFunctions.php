@@ -615,10 +615,15 @@ class ServiceFunctions {
 
         if ($patientId) {
             $this->apiLK->case_set_contact($patientId, $contactInfo);
+            $patient = $this->apiLK->case_get($patientId);
         } else {
-            $patientId = $this->apiLK->case_insert($contactInfo, $subscription ? $subscription->getId() : null, true);
+            $patient = $this->apiLK->case_insert($contactInfo, $subscription ? $subscription->getId() : null, true);
+            $preferences = $patient->getPreferences();
+            $preferences->setEditableByCase(false);
+            $patient->save();
         }
-        return $this->apiLK->case_get($patientId);
+
+        return $patient;
     }
 
     /**

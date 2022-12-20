@@ -15,8 +15,12 @@ class APICase {
     /** @var LinkcareSoapAPI $api */
     private $api;
 
+    /** @var APICasePreferences */
+    private $preferences;
+
     public function __construct() {
         $this->api = LinkcareSoapAPI::getInstance();
+        $this->preferences = new APICasePreferences();
     }
 
     /**
@@ -39,6 +43,9 @@ class APICase {
             $case->bdate = trim($xmlNode->data->bdate);
             $case->gender = trim($xmlNode->data->gender);
             $case->timezone = trim($xmlNode->data->timezone);
+            if (isset($xmlNode->data->preferences)) {
+                $case->preferences = APICasePreferences::parseXML($xmlNode->data->preferences);
+            }
         }
         $identifiers = [];
         if ($xmlNode->identifiers) {
@@ -47,6 +54,7 @@ class APICase {
             }
             $case->identifiers = array_filter($identifiers);
         }
+
         return $case;
     }
 
@@ -135,11 +143,27 @@ class APICase {
         return $this->identifiers;
     }
 
+    /**
+     *
+     * @return APICasePreferences[]
+     */
+    public function getPreferences() {
+        return $this->preferences;
+    }
+
     /*
      * **********************************
      * METHODS
      * **********************************
      */
+    /**
+     * Saves the information of the patient
+     *
+     * @throws APIException
+     */
+    public function save() {
+        $this->api->case_set($this);
+    }
 
     /**
      *
@@ -147,6 +171,7 @@ class APICase {
      * @param int $offset
      * @param TaskFilter $filter
      * @param boolean $ascending
+     * @throws APIException
      * @return APITask[]
      */
     public function getTaskList($maxRes = null, $offset = null, $filter = null, $ascending = true) {
@@ -155,5 +180,28 @@ class APICase {
         }
         $filter->setObjectType('TASKS');
         return $this->api->case_get_task_list($this->id, $maxRes, $offset, $filter, $ascending);
+    }
+
+    /**
+     *
+     * @param XMLHelper $xml
+     * @param SimpleXMLElement $parentNode
+     * @return SimpleXMLElement
+     */
+    public function toXML($xml, $parentNode = null) {
+        if ($parentNode === null) {
+            $parentNode = $xml->rootNode;
+        }
+
+        $xml->createChildNode($xml->rootNode, 'ref', $this->id);
+        $dataNode = $xml->createChildNode($xml->rootNode, 'data');
+        $preferencesNode = $xml->createChildNode($dataNode, 'preferences');
+
+        if ($this->preferences) {
+            $xml->createChildNode($preferencesNode, 'preferences');
+            $this->preferences->toXML($xml, $preferencesNode);
+        }
+
+        return $parentNode;
     }
 }
