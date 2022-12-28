@@ -28,4 +28,7 @@ The possible response status are:
 - error: The function was executed with errors
 
 ### Published functions
-- <b>import_patients</b>: Sends a request to Kangxin hospital to fetch patients that should be imported in the Linkcare platform. A new Admission is created for each patient in the configured Care Plan
+- <b>fetch_kangxin_records</b>: Sends a request to the hospital API to fetch patients that should be imported in the Linkcare platform. The records fetched from the Hospital are stored in a local intermediate DB. This function checks whether the fetched records have any change compared to the last time they were fetched. If the record fetched is new or presents any change, then it will be marked so that it is processed by the "import_patients" function.
+- <b>import_patients</b>: Creates or updates a new Admission for each record fetched from the Hospital in a Care Plan that is a mirror of the Episodes in the Hospital HIS. Additionally it creates an admission in a DISCHARGE FOLLOWUP Care Plan if necessary.
+- <b>review_day_surgery_enrolled</b>: Checks whether the Admissions created in the DISCHARGE FOLLOWUP Care Plan must be automatically rejected. An Admission should be rejected if it still has status "ENROLLED" since a number of days that can be set in the service configuration.
+- <b>fetch_and_import</b>: This function is a shortcut to execute succesively the functions "fetch_pumch_records" and "import_patients" in a single call

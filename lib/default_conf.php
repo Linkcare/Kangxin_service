@@ -53,19 +53,6 @@ $GLOBALS['CASE_MANAGERS_TEAM'] = 'yyyyy';
 $GLOBALS['SURGEONS_TEAM'] = 'yyyyy';
 
 /*
- * Date of the oldest procedure that will be requested to the Kangxin API. This value normally is only used during
- * the first load, because once the DB is feeded with an initial number of records, tha date of the last record will be
- * used in further requests to the Kangxin API to receive only incremental updates
- */
-$GLOBALS['MINIMUM_DATE'] = '2022-10-01';
-
-/*
- * Threshold date to create an Admission in the "Discharge Follow-up" PROGRAM even if the episode is discharged at Kangxin Hospital after the selected
- * date
- */
-$GLOBALS['DISCHARGE_DATE_THRESHOLD'] = '2022-10-01';
-
-/*
  * The Patient and Professional identifiers are not globally unique. They are only unique in a particular Hospital.
  * The following configuration variable defines the Team associated to the hospital organization
  */
@@ -89,6 +76,19 @@ $GLOBALS['ADMIN_DBPASSWORD'] = '';
 /**
  * ** OPTIONAL CONFIGURATION PARAMETERS ***
  */
+/*
+ * Date of the oldest procedure that will be requested to the Kangxin API. This value normally is only used during
+ * the first load, because once the DB is feeded with an initial number of records, tha date of the last record will be
+ * used in further requests to the Kangxin API to receive only incremental updates
+ */
+$GLOBALS['MINIMUM_DATE'] = '2022-10-01';
+
+/*
+ * Threshold date to create an Admission in the "Discharge Follow-up" PROGRAM even if the episode is discharged at Kangxin Hospital after the selected
+ * date
+ */
+$GLOBALS['DISCHARGE_DATE_THRESHOLD'] = '2022-10-01';
+
 /* Default timezone used by the service. It is used when it is necessary to generate dates in a specific timezone */
 $GLOBALS['DEFAULT_TIMEZONE'] = 'Asia/Shanghai';
 /* Log level. Possible values: debug,trace,warning,error,none */
