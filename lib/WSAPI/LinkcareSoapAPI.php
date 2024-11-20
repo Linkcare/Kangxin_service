@@ -97,7 +97,7 @@ class LinkcareSoapAPI {
         }
 
         $date = currentDate($timezone);
-        $result = $client->session_init($user, $password, null, null, $language, '2.7.26', $reuseExistingSession ? 1 : 0, $date);
+        $result = $client->session_init($user, $password, null, null, $language, '2.7.32', $reuseExistingSession ? 1 : 0, $date);
         if ($result["ErrorCode"]) {
             throw new APIException($result["ErrorCode"], $result["ErrorMsg"]);
         } else {
@@ -477,8 +477,10 @@ class LinkcareSoapAPI {
         $resp = $this->invoke('admission_list_program', $params);
         if (!$resp->getErrorCode()) {
             if ($found = simplexml_load_string($resp->getResult())) {
-                foreach ($found->admission as $taskNode) {
-                    $admissionList[] = APIAdmission::parseXML($taskNode);
+                if (isset($found->admissions)) {
+                    foreach ($found->admissions->admission as $admissionNode) {
+                        $admissionList[] = APIAdmission::parseXML($admissionNode);
+                    }
                 }
             }
         }
